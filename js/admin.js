@@ -217,70 +217,50 @@ jQuery(document).ready(function($) {
             return;
         }
     
-        const apiUrl = steamAuthAjax.home_url + '/api/steam-auth/v1/icons';
-        if (steamAuthAjax.debug) console.log('Запрос к REST API:', apiUrl);
-        console.log('Отправляемый nonce:', steamAuthAjax.nonce);
-        console.log('Текущий статус авторизации:', document.cookie.includes('wordpress_logged_in') ? 'Авторизован' : 'Не авторизован');
-    
         $.ajax({
-            url: apiUrl,
+            url: steamAuthAjax.home_url + '/api/steam-auth/v1/icons',
             method: 'GET',
             dataType: 'json',
-            xhrFields: {
-                withCredentials: true // Явно отправляем куки
-            },
-            beforeSend: function(xhr) {
-                xhr.setRequestHeader('X-WP-Nonce', steamAuthAjax.nonce);
-            },
             success: function(data) {
                 cachedIcons = data.data.map(icon => ({
                     id: icon.id,
                     text: icon.text,
-                    prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas'
+                    prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas' // Добавляем prefix, если нужно
                 }));
                 if (steamAuthAjax.debug) console.log('Иконки загружены через REST:', cachedIcons.length);
                 callback(cachedIcons);
             },
             error: function(xhr, status, error) {
-                console.error('Ошибка AJAX:', xhr.status, xhr.responseText); // Добавляем больше отладки
-                if (xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.code === 'rest_no_auth') {
-                    alert('Ваша сессия истекла. Пожалуйста, войдите снова.');
-                    window.location.href = steamAuthAjax.home_url + '/wp-login.php?redirect_to=' + encodeURIComponent(window.location.href);
-                } else {
-                    cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-                    if (steamAuthAjax.debug) {
-                        console.error('Ошибка загрузки иконок:', status, error, 'Response:', xhr.responseText);
-                        console.log('Используется дефолтный список:', cachedIcons);
-                    }
-                    callback(cachedIcons);
-                }
+                cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
+                if (steamAuthAjax.debug) console.error('Ошибка загрузки иконок:', error, 'используется дефолтный список');
+                callback(cachedIcons);
             }
         });
     }
 
-function initIconSelect($elements, icons) {
-    $elements.each(function() {
-        const $select = $(this);
-        if ($select.hasClass('select2-hidden-accessible')) {
-            $select.select2('destroy');
-        }
-        $select.select2({
-            width: '100%',
-            placeholder: 'Выберите иконку',
-            allowClear: true,
-            templateResult: formatIcon,
-            templateSelection: formatIcon,
-            data: icons,
-            matcher: function(params, data) {
-                if (!params.term || params.term.trim() === '') return data;
-                if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) return data;
-                return null;
+    function initIconSelect($elements, icons) {
+        $elements.each(function() {
+            const $select = $(this);
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
             }
+            $select.select2({
+                width: '100%',
+                placeholder: 'Выберите иконку',
+                allowClear: true,
+                templateResult: formatIcon,
+                templateSelection: formatIcon,
+                data: icons,
+                matcher: function(params, data) {
+                    if (!params.term || params.term.trim() === '') return data;
+                    if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) return data;
+                    return null;
+                }
+            });
+            const selected = $select.data('selected') || $select.data('saved-value');
+            if (selected) $select.val(selected).trigger('change');
         });
-        const selected = $select.data('selected') || $select.data('saved-value');
-        if (selected) $select.val(selected).trigger('change');
-    });
-}
+    }
 
     function formatIcon(state) {
         if (!state.id) return state.text;
