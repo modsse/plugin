@@ -9,7 +9,7 @@ function steam_auth_load_tab() {
     $admin_key = get_option('steam_auth_admin_key', '');
     
     $profile_settings = get_option('steam_profile_settings', []);
-    $logs = get_option('steam_auth_logs', []);
+    //$logs = get_option('steam_auth_logs', []);
     $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
     $roles = wp_roles()->get_names();
 

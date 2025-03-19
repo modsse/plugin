@@ -1271,10 +1271,12 @@ function get_steam_auth_logs_rest($request) {
 }
 
 function get_steam_auth_stats($request) {
-    $logs = get_option('steam_auth_logs', []);
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
     $period = $request->get_param('period') ?? 'day';
     $timezone = wp_timezone();
     $date = new DateTime('now', $timezone);
+
     switch ($period) {
         case 'day':
             $date->modify('-1 day');
@@ -1286,18 +1288,35 @@ function get_steam_auth_stats($request) {
             $date->modify('-1 month');
             break;
     }
-    $filteredLogs = array_filter($logs, function($log) use ($date) {
-        $logDate = new DateTime($log['date'], wp_timezone());
-        return $logDate >= $date;
-    });
+
+    $date_str = $date->format('Y-m-d H:i:s');
+    $query = $wpdb->prepare(
+        "SELECT action, date FROM $table_name WHERE date >= %s",
+        $date_str
+    );
+    $logs = $wpdb->get_results($query);
+
+    if ($logs === null) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Ошибка запроса статистики из $table_name: " . $wpdb->last_error);
+        }
+        return [
+            'registration' => 0,
+            'authorization' => 0,
+            'discord_link' => 0,
+            'discord_unlink' => 0
+        ];
+    }
+
     $stats = [
         'registration' => 0,
         'authorization' => 0,
         'discord_link' => 0,
         'discord_unlink' => 0
     ];
-    foreach ($filteredLogs as $log) {
-        switch (strtolower($log['action'])) {
+
+    foreach ($logs as $log) {
+        switch (strtolower($log->action)) {
             case 'registration':
                 $stats['registration']++;
                 break;
@@ -1308,10 +1327,16 @@ function get_steam_auth_stats($request) {
                 $stats['discord_link']++;
                 break;
             case 'discord_unlink':
+            case 'discord_unlink_approved': // Добавляем для полноты
                 $stats['discord_unlink']++;
                 break;
         }
     }
+
+    if (get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Статистика за $period: " . json_encode($stats));
+    }
+
     return $stats;
 }
 
