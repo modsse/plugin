@@ -211,20 +211,43 @@ function send_discord_notification($discord_id, $title, $description, $template 
     }
 }
 
+/**
+ * AJAX-функция для очистки логов Steam Auth.
+ *
+ * Функция-обработчик AJAX-запроса, вызываемый при отправке формы очистки логов.
+ *
+ * @since 1.0.0
+ */
 function steam_auth_clear_logs() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
 
+    /*
+     * Проверка прав доступа.
+     *
+     * только администраторы могут очищать логи.
+     */
     if (!current_user_can('manage_options')) {
         wp_send_json_error(['message' => 'Недостаточно прав']);
         return;
     }
 
+    /*
+     * Проверка nonce.
+     *
+     * nonce - это случайное значение, которое генерируется WordPress
+     * для предотвращения CSRF-атак.
+     */
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'steam_auth_nonce')) {
         wp_send_json_error(['message' => 'Ошибка проверки nonce']);
         return;
     }
 
+    /*
+     * Очистка логов.
+     *
+     * если таблица логов существует, то очищаем ее.
+     */
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
         $result = $wpdb->query("TRUNCATE TABLE $table_name");
         if ($result === false) {
@@ -240,6 +263,13 @@ function steam_auth_clear_logs() {
 add_action('wp_ajax_steam_auth_clear_logs', 'steam_auth_clear_logs');
 
 add_action('wp_ajax_steam_auth_save_settings', 'steam_auth_save_settings');
+/**
+ * Обработка сохранения настроек Steam Auth.
+ *
+ * Функция-обработчик AJAX-запроса, вызываемый при отправке форм настроек.
+ *
+ * @since 2.0.0
+ */
 function steam_auth_save_settings() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     $data = $_POST;
@@ -334,6 +364,15 @@ function steam_auth_approve_unlink_discord() {
 }
 
 add_action('wp_ajax_steam_auth_reject_unlink_discord', 'steam_auth_reject_unlink_discord');
+
+/**
+ * AJAX-обработчик отклонения запроса на отвязку Discord.
+ *
+ * Функция-обработчик AJAX-запроса, вызываемый при отправке формы отклонения
+ * запроса на отвязку Discord.
+ *
+ * @since 2.0.0
+ */
 function steam_auth_reject_unlink_discord() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) {
@@ -512,21 +551,33 @@ add_action('wp_ajax_steam_auth_test_discord_embed', function() {
 
 // Добавим обработчик для сохранения пользовательских шаблонов (из предыдущих изменений)
 add_action('wp_ajax_steam_auth_save_custom_template', 'steam_auth_save_custom_template');
+/**
+ * Обработчик AJAX для сохранения пользовательских шаблонов Discord
+ *
+ * @since 1.3
+ */
 function steam_auth_save_custom_template() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) {
         wp_send_json_error('Недостаточно прав');
     }
 
-    $template_data = json_decode(stripslashes($_POST['template']), true);
-    if (!$template_data || empty($template_data['name'])) {
+    $template_data = json_decode(stripslashes($_POST['template']), JSON_OBJECT_AS_ARRAY);
+    if (!is_array($template_data)) {
+        wp_send_json_error('Неверные данные шаблона');
+    }
+    if (!$template_data || empty($template_data['name']) || empty($template_data['fields'])) {
         wp_send_json_error('Неверные данные шаблона');
     }
 
     $custom_templates = get_option('steam_auth_discord_custom_templates', []);
     $key = sanitize_key($template_data['name']);
     $custom_templates[$key] = $template_data;
-    update_option('steam_auth_discord_custom_templates', $custom_templates);
+    $result = wp_update_option('steam_auth_discord_custom_templates', $custom_templates);
+
+    if ($result === false) {
+        wp_send_json_error('Ошибка сохранения данных');
+    }
 
     wp_send_json_success(['key' => $key]);
 }
