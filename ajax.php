@@ -220,9 +220,18 @@ function steam_auth_clear_logs() {
         return;
     }
 
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'steam_auth_nonce')) {
+        wp_send_json_error(['message' => 'Ошибка проверки nonce']);
+        return;
+    }
+
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-        $wpdb->query("TRUNCATE TABLE $table_name");
-        wp_send_json_success(['message' => 'Логи успешно очищены']);
+        $result = $wpdb->query("TRUNCATE TABLE $table_name");
+        if ($result === false) {
+            wp_send_json_error(['message' => 'Ошибка базы данных: ' . $wpdb->last_error]);
+        } else {
+            wp_send_json_success(['message' => 'Логи успешно очищены']);
+        }
     } else {
         wp_send_json_error(['message' => 'Таблица логов не найдена']);
     }

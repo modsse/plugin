@@ -975,52 +975,61 @@ jQuery(document).ready(function($) {
     });
 
     // Обработка очистки логов
-    $('#clear-logs').on('click', function(e) {
+    $(document).on('click', '#clear-logs', function(e) {
         e.preventDefault();
         var $button = $(this);
-        if (confirm('Вы уверены, что хотите очистить все логи?')) {
-            $button.prop('disabled', true);
-            $.ajax({
-                url: steamAuthAjax.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'steam_auth_clear_logs',
-                    nonce: steamAuthAjax.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('.steam-auth-logs').html('<p>Логов нет.</p>');
-                        $('#steam-auth-notification')
-                            .removeClass('error')
-                            .addClass('success')
-                            .html(response.data.message)
-                            .slideDown(300)
-                            .delay(3000)
-                            .slideUp(300);
-                    } else {
+        if (steamAuthAjax.debug) console.log('Клик по "Очистить логи"');
+
+        showConfirmModal('Вы уверены, что хотите очистить все логи?', function(confirmed) {
+            if (confirmed) {
+                $button.prop('disabled', true);
+                if (steamAuthAjax.debug) console.log('Подтверждение получено, отправка AJAX');
+
+                $.ajax({
+                    url: steamAuthAjax.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'steam_auth_clear_logs',
+                        nonce: steamAuthAjax.nonce
+                    },
+                    success: function(response) {
+                        if (steamAuthAjax.debug) console.log('Ответ сервера:', response);
+                        if (response.success) {
+                            $('.steam-auth-logs').html('<p>Логов нет.</p>');
+                            $('#steam-auth-notification')
+                                .removeClass('error')
+                                .addClass('success')
+                                .html(response.data.message || 'Логи успешно очищены')
+                                .slideDown(300)
+                                .delay(3000)
+                                .slideUp(300);
+                        } else {
+                            $('#steam-auth-notification')
+                                .removeClass('success')
+                                .addClass('error')
+                                .html(response.data.message || 'Неизвестная ошибка')
+                                .slideDown(300)
+                                .delay(3000)
+                                .slideUp(300);
+                        }
+                        $button.prop('disabled', false);
+                    },
+                    error: function(xhr, status, error) {
+                        if (steamAuthAjax.debug) console.error('Ошибка AJAX:', status, error, xhr.responseText);
                         $('#steam-auth-notification')
                             .removeClass('success')
                             .addClass('error')
-                            .html(response.data.message || 'Неизвестная ошибка')
+                            .html('Ошибка при очистке логов: ' + (xhr.responseText || error))
                             .slideDown(300)
                             .delay(3000)
                             .slideUp(300);
+                        $button.prop('disabled', false);
                     }
-                    $button.prop('disabled', false);
-                },
-                error: function(xhr, status, error) {
-                    console.error('Ошибка AJAX при очистке логов:', status, error);
-                    $('#steam-auth-notification')
-                        .removeClass('success')
-                        .addClass('error')
-                        .html('Ошибка при очистке логов')
-                        .slideDown(300)
-                        .delay(3000)
-                        .slideUp(300);
-                    $button.prop('disabled', false);
-                }
-            });
-        }
+                });
+            } else {
+                if (steamAuthAjax.debug) console.log('Очистка отменена пользователем');
+            }
+        });
     });
 
     loadTab('general');

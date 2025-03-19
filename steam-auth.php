@@ -1113,9 +1113,10 @@ add_action('rest_api_init', function () {
     register_rest_route('steam-auth/v1', '/clearlogs', [
         'methods' => 'POST',
         'callback' => 'clear_steam_auth_logs',
-        'permission_callback' => function () {
-            $api_key = $_GET['api_key'] ?? '';
-            return $api_key === get_option('steam_auth_bot_api_key', '');
+        'permission_callback' => function ($request) {
+            $api_key = $request->get_param('api_key');
+            $stored_key = get_option('steam_auth_bot_api_key');
+            return $api_key && $stored_key && $api_key === $stored_key;
         }
     ]);
 
@@ -1315,7 +1316,24 @@ function get_steam_auth_stats($request) {
 }
 
 function clear_steam_auth_logs($request) {
-    update_option('steam_auth_logs', []);
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
+
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        return new WP_Error('no_table', 'Таблица логов не найдена', ['status' => 500]);
+    }
+
+    $result = $wpdb->query("TRUNCATE TABLE $table_name");
+
+    if ($result === false) {
+        error_log("Steam Auth: Ошибка очистки таблицы $table_name: " . $wpdb->last_error);
+        return new WP_Error('db_error', 'Ошибка базы данных при очистке логов', ['status' => 500]);
+    }
+
+    if (get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Логи успешно очищены из таблицы $table_name");
+    }
+
     return ['success' => true, 'message' => 'Логи очищены'];
 }
 
