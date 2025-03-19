@@ -302,12 +302,15 @@ function steam_profile_shortcode() {
     
     function get_icon_prefix($icon_name) {
         global $steam_auth_icons;
+        $start = microtime(true);
         $icon_key = str_replace('fa-', '', $icon_name);
+        $prefix = 'fas';
         if (isset($steam_auth_icons[$icon_key])) {
             $style = $steam_auth_icons[$icon_key]['styles'][0];
-            return $style === 'brands' ? 'fab' : 'fas';
+            $prefix = $style === 'brands' ? 'fab' : 'fas';
         }
-        return 'fas';
+        error_log("Steam Auth: Время выполнения get_icon_prefix: " . (microtime(true) - $start));
+        return $prefix;
     }
 
     $transient_key = 'steam_profile_notification_' . $user_id;
