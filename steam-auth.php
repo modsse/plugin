@@ -1172,6 +1172,7 @@ add_action('rest_api_init', function () {
         'callback' => 'get_cached_icons',
         'permission_callback' => function (WP_REST_Request $request) {
             $nonce = $request->get_header('X-WP-Nonce');
+            error_log("Steam Auth: REST API /icons вызван");
             error_log("Steam Auth: Nonce из запроса: " . ($nonce ?: 'нет nonce'));
             error_log("Steam Auth: Куки в запросе: " . json_encode($_COOKIE));
             error_log("Steam Auth: Пользователь авторизован на сервере: " . (is_user_logged_in() ? 'да' : 'нет'));
@@ -1188,6 +1189,7 @@ add_action('rest_api_init', function () {
                 error_log("Steam Auth: Пользователь не имеет прав manage_options");
                 return new WP_Error('rest_forbidden', 'У вас нет доступа к этому ресурсу', ['status' => 403]);
             }
+            error_log("Steam Auth: Доступ к /icons разрешён");
             return true;
         }
     ]);

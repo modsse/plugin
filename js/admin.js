@@ -226,6 +226,9 @@ jQuery(document).ready(function($) {
             url: apiUrl,
             method: 'GET',
             dataType: 'json',
+            xhrFields: {
+                withCredentials: true // Включает отправку куки с запросом
+            },
             beforeSend: function(xhr) {
                 xhr.setRequestHeader('X-WP-Nonce', steamAuthAjax.nonce);
             },
