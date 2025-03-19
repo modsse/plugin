@@ -974,30 +974,31 @@ jQuery(document).ready(function($) {
         });
     });
 
-    jQuery(document).ready(function($) {
-        // Обработка клика по кнопке "Очистить логи"
-        $('#clear-logs').on('click', function() {
-            if (confirm('Вы уверены, что хотите очистить все логи?')) {
-                $.ajax({
-                    url: ajaxurl, // WordPress глобальная переменная для AJAX
-                    type: 'POST',
-                    data: {
-                        action: 'steam_auth_clear_logs' // Соответствует wp_ajax_steam_auth_clear_logs
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            alert(response.data.message); // "Логи успешно очищены"
-                            location.reload(); // Перезагружаем страницу для обновления списка
-                        } else {
-                            alert('Ошибка: ' + (response.data.message || 'Не удалось очистить логи'));
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        alert('Ошибка AJAX-запроса: ' + error);
+    $('#clear-logs').on('click', function(e) {
+        e.preventDefault();
+        if (confirm('Вы уверены, что хотите очистить все логи?')) {
+            $.ajax({
+                url: steamAuthAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'steam_auth_clear_logs',
+                    nonce: steamAuthAjax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Обновляем только список логов
+                        $('.steam-auth-logs').html('<p>Логов нет.</p>'); // Предполагаем класс .steam-auth-logs для списка
+                        alert(response.data.message);
+                    } else {
+                        alert('Ошибка: ' + (response.data.message || 'Неизвестная ошибка'));
                     }
-                });
-            }
-        });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ошибка AJAX при очистке логов:', status, error);
+                    alert('Ошибка при очистке логов. Проверьте консоль.');
+                }
+            });
+        }
     });
 
     loadTab('general');

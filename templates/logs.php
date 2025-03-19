@@ -1,21 +1,41 @@
 <div class="wrap">
     <h1>Логи Steam Auth</h1>
-    <?php
-    $logs = get_steam_auth_logs(); // Используем глобальную функцию
-    if ($logs) {
-        echo '<ul>';
-        foreach ($logs as $log) {
-            $log_details = $log->date . ' - ' . esc_html($log->action) . ' (Steam ID: ' . esc_html($log->steam_id);
-            if ($log->discord_id) $log_details .= ', Discord ID: ' . esc_html($log->discord_id);
-            if ($log->discord_username) $log_details .= ', Discord: ' . esc_html($log->discord_username);
-            $log_details .= ')';
-            if ($log->error) $log_details .= ' - Ошибка: ' . esc_html($log->error);
-            echo '<li>' . $log_details . '</li>';
+    <div class="steam-auth-logs">
+        <?php
+        $logs = get_steam_auth_logs(50);
+        if ($logs) {
+            ?>
+            <table class="steam-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Действие</th>
+                        <th>Steam ID</th>
+                        <th>Discord ID</th>
+                        <th>Discord Имя</th>
+                        <th>Ошибка</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ($logs as $log) {
+                        echo '<tr>';
+                        echo '<td>' . esc_html($log->date) . '</td>';
+                        echo '<td>' . esc_html($log->action) . '</td>';
+                        echo '<td>' . esc_html($log->steam_id) . '</td>';
+                        echo '<td>' . esc_html($log->discord_id ?: '—') . '</td>';
+                        echo '<td>' . esc_html($log->discord_username ?: '—') . '</td>';
+                        echo '<td>' . esc_html($log->error ?: '—') . '</td>';
+                        echo '</tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
+            <?php
+        } else {
+            echo '<p>Логов нет.</p>';
         }
-        echo '</ul>';
-    } else {
-        echo '<p>Логов нет.</p>';
-    }
-    ?>
+        ?>
+    </div>
     <button id="clear-logs" class="button button-primary">Очистить логи</button>
 </div>

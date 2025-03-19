@@ -1103,7 +1103,7 @@ function steam_auth_settings_page() {
 add_action('rest_api_init', function () {
     register_rest_route('steam-auth/v1', '/logs', [
         'methods' => 'GET',
-        'callback' => 'get_steam_auth_logs',
+        'callback' => 'get_steam_auth_logs_rest', // Изменено имя функции
         'permission_callback' => function () {
             $api_key = $_GET['api_key'] ?? '';
             return $api_key === get_option('steam_auth_bot_api_key', '');
@@ -1234,26 +1234,38 @@ function reject_discord_unlink($request) {
     return ['success' => true, 'message' => 'Запрос отклонён'];
 }
 
-function get_steam_auth_logs($request) {
-    $logs = get_option('steam_auth_logs', []);
+function get_steam_auth_logs_rest($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
     $type = $request->get_param('type') ?? 'all';
+    $limit = 50; // Можно сделать настраиваемым через $request->get_param('limit') в будущем
 
+    // Проверяем, существует ли таблица
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth REST: Таблица $table_name не найдена");
+        }
+        return [];
+    }
+
+    $query = "SELECT * FROM $table_name";
     if ($type !== 'all') {
-        $logs = array_filter($logs, function($log) use ($type) {
-            if ($type === 'discord') {
-                $action_lower = strtolower($log['action']);
-                $is_discord = strpos($action_lower, 'discord') !== false;
-                if (get_option('steam_auth_debug', false)) {
-                    error_log("Steam Auth: Проверка лога - Action: {$log['action']}, Type: $type, Результат: " . ($is_discord ? 'true' : 'false'));
-                }
-                return $is_discord;
-            }
-            return strtolower($log['action']) === strtolower($type);
-        });
+        $query .= $wpdb->prepare(" WHERE action = %s", $type);
     }
+    $query .= " ORDER BY date DESC LIMIT %d";
+    $logs = $wpdb->get_results($wpdb->prepare($query, $limit));
+
+    if ($logs === null) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth REST: Ошибка запроса к таблице $table_name: " . $wpdb->last_error);
+        }
+        return [];
+    }
+
     if (get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Возвращено логов для type=$type: " . count($logs));
+        error_log("Steam Auth REST: Возвращено логов для type=$type: " . count($logs));
     }
+
     return array_values($logs);
 }
 
@@ -1818,5 +1830,34 @@ function steam_auth_check_tables() {
 register_activation_hook( __FILE__, 'steam_auth_create_logs_table' );
 add_action('plugins_loaded', 'steam_auth_check_tables');
 
+// Функция для получения логов из таблицы
+function get_steam_auth_logs($limit = 50) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
 
+    // Проверяем, существует ли таблица
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Таблица $table_name не найдена, возвращаем пустой массив");
+        }
+        return [];
+    }
+
+    // Приводим $limit к целому числу, используем значение по умолчанию 50, если не указано
+    $limit = (int) $limit > 0 ? (int) $limit : 50;
+
+    $results = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_name ORDER BY date DESC LIMIT %d",
+        $limit
+    ));
+
+    if ($results === null) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Ошибка запроса к таблице $table_name: " . $wpdb->last_error);
+        }
+        return [];
+    }
+
+    return $results;
+}
 ?>
