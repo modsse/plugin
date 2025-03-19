@@ -976,7 +976,9 @@ jQuery(document).ready(function($) {
 
     $('#clear-logs').on('click', function(e) {
         e.preventDefault();
+        var $button = $(this);
         if (confirm('Вы уверены, что хотите очистить все логи?')) {
+            $button.prop('disabled', true);
             $.ajax({
                 url: steamAuthAjax.ajaxurl,
                 type: 'POST',
@@ -986,16 +988,37 @@ jQuery(document).ready(function($) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Обновляем только список логов
-                        $('.steam-auth-logs').html('<p>Логов нет.</p>'); // Предполагаем класс .steam-auth-logs для списка
-                        alert(response.data.message);
+                        // Обновляем список логов
+                        $('.steam-auth-logs').html('<p>Логов нет.</p>');
+                        // Показываем уведомление
+                        $('#steam-auth-notification')
+                            .removeClass('error')
+                            .addClass('success')
+                            .html(response.data.message)
+                            .slideDown(300)
+                            .delay(3000)
+                            .slideUp(300);
                     } else {
-                        alert('Ошибка: ' + (response.data.message || 'Неизвестная ошибка'));
+                        $('#steam-auth-notification')
+                            .removeClass('success')
+                            .addClass('error')
+                            .html(response.data.message || 'Неизвестная ошибка')
+                            .slideDown(300)
+                            .delay(3000)
+                            .slideUp(300);
                     }
+                    $button.prop('disabled', false);
                 },
                 error: function(xhr, status, error) {
                     console.error('Ошибка AJAX при очистке логов:', status, error);
-                    alert('Ошибка при очистке логов. Проверьте консоль.');
+                    $('#steam-auth-notification')
+                        .removeClass('success')
+                        .addClass('error')
+                        .html('Ошибка при очистке логов. Проверьте консоль.')
+                        .slideDown(300)
+                        .delay(3000)
+                        .slideUp(300);
+                    $button.prop('disabled', false);
                 }
             });
         }
