@@ -1172,16 +1172,22 @@ add_action('rest_api_init', function () {
         'callback' => 'get_cached_icons',
         'permission_callback' => function (WP_REST_Request $request) {
             $nonce = $request->get_header('X-WP-Nonce');
+            error_log("Steam Auth: Nonce из запроса: " . ($nonce ?: 'нет nonce'));
+            error_log("Steam Auth: Куки в запросе: " . json_encode($_COOKIE));
+            error_log("Steam Auth: Пользователь авторизован на сервере: " . (is_user_logged_in() ? 'да' : 'нет'));
+    
+            if (!is_user_logged_in()) {
+                error_log("Steam Auth: Пользователь не авторизован при запросе /icons");
+                return new WP_Error('rest_no_auth', 'Вы не авторизованы', ['status' => 403]);
+            }
             if (!$nonce || !wp_verify_nonce($nonce, 'steam_auth_nonce')) {
                 error_log("Steam Auth: Неверный или отсутствует nonce в REST API: " . ($nonce ?: 'нет nonce'));
                 return new WP_Error('rest_forbidden', 'Неверный nonce', ['status' => 403]);
             }
-
             if (!current_user_can('manage_options')) {
                 error_log("Steam Auth: Пользователь не имеет прав manage_options");
                 return new WP_Error('rest_forbidden', 'У вас нет доступа к этому ресурсу', ['status' => 403]);
             }
-
             return true;
         }
     ]);

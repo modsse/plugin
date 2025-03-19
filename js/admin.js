@@ -219,9 +219,9 @@ jQuery(document).ready(function($) {
     
         const apiUrl = steamAuthAjax.home_url + '/api/steam-auth/v1/icons';
         if (steamAuthAjax.debug) console.log('Запрос к REST API:', apiUrl);
-        
         console.log('Отправляемый nonce:', steamAuthAjax.nonce);
         console.log('Текущий статус авторизации:', document.cookie.includes('wordpress_logged_in') ? 'Авторизован' : 'Не авторизован');
+    
         $.ajax({
             url: apiUrl,
             method: 'GET',
@@ -239,12 +239,17 @@ jQuery(document).ready(function($) {
                 callback(cachedIcons);
             },
             error: function(xhr, status, error) {
-                cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-                if (steamAuthAjax.debug) {
-                    console.error('Ошибка загрузки иконок:', status, error, 'Response:', xhr.responseText);
-                    console.log('Используется дефолтный список:', cachedIcons);
+                if (xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.code === 'rest_no_auth') {
+                    alert('Ваша сессия истекла. Пожалуйста, войдите снова.');
+                    window.location.href = steamAuthAjax.home_url + '/wp-login.php?redirect_to=' + encodeURIComponent(window.location.href);
+                } else {
+                    cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
+                    if (steamAuthAjax.debug) {
+                        console.error('Ошибка загрузки иконок:', status, error, 'Response:', xhr.responseText);
+                        console.log('Используется дефолтный список:', cachedIcons);
+                    }
+                    callback(cachedIcons);
                 }
-                callback(cachedIcons);
             }
         });
     }
