@@ -1170,13 +1170,30 @@ add_action('rest_api_init', function () {
     register_rest_route('steam-auth/v1', '/icons', [
         'methods' => 'GET',
         'callback' => 'get_cached_icons',
-        'permission_callback' => '__return_true' 
+        'permission_callback' => function (WP_REST_Request $request) {
+            $nonce = $request->get_header('X-WP-Nonce');
+            if (!$nonce || !wp_verify_nonce($nonce, 'steam_auth_nonce')) {
+                error_log("Steam Auth: Неверный или отсутствует nonce в REST API: " . ($nonce ?: 'нет nonce'));
+                return new WP_Error('rest_forbidden', 'Неверный nonce', ['status' => 403]);
+            }
+
+            if (!current_user_can('manage_options')) {
+                error_log("Steam Auth: Пользователь не имеет прав manage_options");
+                return new WP_Error('rest_forbidden', 'У вас нет доступа к этому ресурсу', ['status' => 403]);
+            }
+
+            return true;
+        }
     ]);
 
 });
 
 function get_cached_icons($request) {
-    global $steam_auth_icons; // Используем глобальный кэш
+    global $steam_auth_icons;
+    if (empty($steam_auth_icons)) {
+        error_log("Steam Auth: Иконки не загружены в \$steam_auth_icons");
+    }
+
     $formatted_icons = [];
     foreach ($steam_auth_icons as $key => $data) {
         $formatted_icons[] = [
