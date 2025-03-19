@@ -583,6 +583,11 @@ function steam_auth_save_custom_template() {
 }
 
 add_action('wp_ajax_steam_auth_remove_custom_template', 'steam_auth_remove_custom_template');
+/**
+ * AJAX-обработчик удаления пользовательских шаблонов Discord
+ *
+ * @since 1.3
+ */
 function steam_auth_remove_custom_template() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_die();
@@ -599,6 +604,11 @@ function steam_auth_remove_custom_template() {
 }
 
 add_action('wp_ajax_update_discord_notifications', 'steam_auth_update_discord_notifications');
+/**
+ * AJAX-обработчик обновления настроек уведомлений Discord для профиля
+ *
+ * @since 1.3
+ */
 function steam_auth_update_discord_notifications() {
     check_ajax_referer('steam_profile_nonce', 'nonce');
 
