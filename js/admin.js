@@ -218,7 +218,7 @@ function loadIcons(callback) {
     }
 
     $.ajax({
-        url: steamAuthAjax.home_url + '/wp-json/steam-auth/v1/icons',
+        url: steamAuthAjax.home_url + '/api/steam-auth/v1/icons',
         method: 'GET',
         dataType: 'json',
         success: function(data) {
