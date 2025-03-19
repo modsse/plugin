@@ -1,17 +1,12 @@
-<style>
-.messages-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-.messages-table th, .messages-table td { padding: 10px; text-align: left; border: 1px solid #ddd; }
-.messages-table th { background: #f1f1f1; font-weight: bold; }
-.messages-table tr:nth-child(even) { background: #f9f9f9; }
-</style>
 <div class="wrap">
     <h1>Логи Steam Auth</h1>
+    <div id="steam-auth-notification" class="notification" style="display: none;"></div>
     <div class="steam-auth-logs">
         <?php
         $logs = get_steam_auth_logs(50);
         if ($logs) {
             ?>
-            <table class="steam-table">
+            <table class="messages-table widefat">
                 <thead>
                     <tr>
                         <th>Дата</th>
@@ -43,5 +38,5 @@
         }
         ?>
     </div>
-    <button id="clear-logs" class="button button-primary">Очистить логи</button>
+    <p><button id="clear-logs" class="button button-primary">Очистить логи</button></p>
 </div>

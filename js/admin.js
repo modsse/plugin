@@ -810,23 +810,23 @@ jQuery(document).ready(function($) {
         });
     });
 
-    $(document).on('click', '#clear-logs', function() {
-        showConfirmModal('Вы уверены, что хотите очистить все логи?', function(confirmed) {
-            if (confirmed) {
-                if (steamAuthAjax.debug) console.log('Попытка очистки логов');
-                $.post(steamAuthAjax.ajaxurl, {
-                    action: 'steam_auth_clear_logs',
-                    nonce: steamAuthAjax.nonce
-                }, function(response) {
-                    if (steamAuthAjax.debug) console.log('Логи очищены, обновление вкладки');
-                    content.innerHTML = '<div class="notice notice-success is-dismissible"><p>Логи успешно очищены</p></div>' + response;
-                }).fail(function(xhr, status, error) {
-                    console.error('Ошибка при очистке логов:', status, error);
-                    content.innerHTML = '<div class="notice notice-error is-dismissible"><p>Ошибка при очистке логов: ' + error + '</p></div>' + content.innerHTML;
-                });
-            }
-        });
-    });
+    // $(document).on('click', '#clear-logs', function() {
+    //     showConfirmModal('Вы уверены, что хотите очистить все логи?', function(confirmed) {
+    //         if (confirmed) {
+    //             if (steamAuthAjax.debug) console.log('Попытка очистки логов');
+    //             $.post(steamAuthAjax.ajaxurl, {
+    //                 action: 'steam_auth_clear_logs',
+    //                 nonce: steamAuthAjax.nonce
+    //             }, function(response) {
+    //                 if (steamAuthAjax.debug) console.log('Логи очищены, обновление вкладки');
+    //                 content.innerHTML = '<div class="notice notice-success is-dismissible"><p>Логи успешно очищены</p></div>' + response;
+    //             }).fail(function(xhr, status, error) {
+    //                 console.error('Ошибка при очистке логов:', status, error);
+    //                 content.innerHTML = '<div class="notice notice-error is-dismissible"><p>Ошибка при очистке логов: ' + error + '</p></div>' + content.innerHTML;
+    //             });
+    //         }
+    //     });
+    // });
 
     $(document).on('click', '.steam-approve-unlink-discord', function() {
         const userId = $(this).data('user-id');

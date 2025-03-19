@@ -27,12 +27,12 @@ add_action('admin_enqueue_scripts', function($hook) {
         wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css');
         wp_enqueue_script('jquery');
         wp_enqueue_script('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js', ['jquery'], null, true);
-        wp_enqueue_script('steam-auth-admin', plugins_url('js/admin.js', __FILE__), ['jquery', 'select2'], '2.10.2', true);
+        wp_enqueue_script('steam-auth-admin', plugin_dir_url(__FILE__) . 'js/admin.js', ['jquery', 'select2'], filemtime(plugin_dir_path(__FILE__) . 'js/admin.js'), true);
         wp_localize_script('steam-auth-admin', 'steamAuthAjax', [
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('steam_auth_nonce'),
             'debug' => get_option('steam_auth_debug', false) ? true : false,
-            'home_url' => home_url(), // Добавляем home_url
+            'home_url' => home_url(),
             'customTemplates' => get_option('steam_auth_discord_custom_templates', [])
         ]);
         if (get_option('steam_auth_debug', false)) {
