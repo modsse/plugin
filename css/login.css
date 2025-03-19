@@ -1,0 +1,92 @@
+body.login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Roboto', Arial, sans-serif; /* Современный шрифт */
+}
+
+#login {
+    width: 340px;
+    background: #1ca1a1; /* Чуть светлее фона */
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Мягкая тень */
+    transition: transform 0.2s ease; /* Анимация при наведении */
+}
+
+#login:hover {
+    transform: translateY(-2px); /* Лёгкий подъём при наведении */
+}
+
+.login-message {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 20px;
+    color: #2c3e50; /* Тёмно-синий для текста */
+    font-weight: 500;
+}
+
+.error-message {
+    text-align: center;
+    color: #e74c3c; /* Красный для ошибок */
+    margin-bottom: 15px;
+    font-size: 14px;
+    background: #fceae8;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+label {
+    font-size: 14px;
+    color: #34495e; /* Тёмно-серый для меток */
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #d1d8e0;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background: #fff;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+    border-color: #3498db; /* Голубой при фокусе */
+    outline: none;
+}
+
+input[type="submit"] {
+    background: #3498db; /* Голубая кнопка */
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+input[type="submit"]:hover {
+    background: #2980b9; /* Темнее при наведении */
+}
+
+#login_error,
+.message,
+#nav,
+#backtoblog,
+.privacy-policy-page-link,
+.language-switcher {
+    display: none !important;
+}

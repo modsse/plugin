@@ -1,0 +1,493 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+/* В конец style.css */
+.steam-profile {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: relative;
+    width: 100%; /* Убеждаемся, что ширина ограничена */
+    box-sizing: border-box; /* Включаем padding в ширину */
+}
+
+.steam-profile h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.steam-profile .avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    display: block;
+}
+
+/* Обновляем стили для .profile-details */
+.steam-profile .profile-details {
+    padding: 0;
+    margin: 0 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Отступ между блоками */
+}
+
+/* Заменяем li на .profile-field */
+.steam-profile .profile-field {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    font-size: 16px;
+    color: #555;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.steam-profile .profile-field:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.steam-profile .field-icon {
+    margin-right: 15px;
+    font-size: 18px;
+    color: #171a21;
+    width: 20px;
+    text-align: center;
+}
+
+.steam-profile .field-label {
+    font-weight: bold;
+    color: #222;
+    margin-right: 10px;
+    white-space: nowrap;
+}
+
+.steam-profile .field-value {
+    color: #555;
+    word-break: break-word;
+    flex: 1;
+}
+
+.steam-profile .field-value a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.steam-profile .field-value a:hover {
+    text-decoration: underline;
+}
+
+/* Стили кнопок в профиле */
+.steam-edit-btn,
+.steam-logout-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #171a21;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-right: 10px;
+    transition: background 0.3s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* Стили контента профиля */
+.profile-content {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.profile-content.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.profile-content.hidden {
+    opacity: 0;
+    transform: translateY(-20px);
+    position: absolute;
+    width: 100%;
+}
+
+/* Стили редактирования */
+.steam-edit-profile {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.steam-edit-profile.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.profile-content.hidden,
+.steam-edit-profile.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    position: absolute;
+    width: 100%;
+    pointer-events: none; /* Отключаем взаимодействие с элементом */
+    display: none; /* Дополнительно скрываем */
+}
+
+.steam-edit-profile label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #222;
+}
+
+.steam-edit-profile input[type="text"],
+.steam-edit-profile input[type="email"],
+.steam-edit-profile input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.steam-edit-profile textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    min-height: 100px;
+}
+
+.steam-save-btn,
+.steam-cancel-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #171a21;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-right: 10px;
+    text-decoration: none;
+    min-width: 150px;
+    text-align: center;
+    font-size: 16px;
+    line-height: 1;
+    box-sizing: border-box;
+}
+
+.steam-edit-btn:hover,
+.steam-logout-btn:hover,
+.steam-save-btn:hover,
+.steam-cancel-btn:hover {
+    background: #2a2f3a;
+}
+
+/* Стили уведомления */
+.notification {
+    position: fixed;
+    top: 10%; /* Перемещаем в верхнюю часть экрана */
+    left: 25%;
+    transform: translateX(-25%); /* Центрируем только по горизонтали */
+    padding: 3px;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 16px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 300px;
+    max-width: 90%; /* Ограничиваем ширину на маленьких экранах */
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.notification.visible {
+    opacity: 1;
+}
+
+.notification.fade-out {
+    opacity: 0;
+}
+
+.notification.success {
+    background: #28a745;
+}
+
+.notification.error {
+    background: #dc3545;
+}
+
+/* Стили для админки */
+.custom-fields-container {
+    border: 1px solid #ddd;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.custom-field {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-field input[type="text"],
+.custom-field select {
+    flex: 1;
+    padding: 5px;
+}
+
+.custom-field input[type="checkbox"] {
+    margin: 0 5px;
+}
+
+.remove-field {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.remove-field:hover {
+    background: #c82333;
+}
+
+.steam-discord-btn {
+    background: #7289da;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.steam-discord-btn:hover {
+    background: #677bc4;
+}
+
+.steam-discord-unlink-btn {
+    background: #ff4444;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+    margin-left: 10px;
+}
+
+.steam-discord-unlink-btn:hover {
+    background: #cc3333;
+}
+
+.profile-tabs {
+    margin-bottom: 20px;
+}
+
+.tab-link {
+    padding: 10px 20px;
+    margin-right: 10px;
+    background: #f0f0f0;
+    text-decoration: none;
+    color: #333;
+    border-radius: 5px;
+}
+
+.tab-link.active {
+    background: #171a21;
+    color: white;
+}
+
+.messages-tab {
+    margin-top: 20px;
+}
+
+.message-list {
+    list-style: none;
+    padding: 0;
+}
+
+.message-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.message-item.unread {
+    background: #e6f3ff;
+    border-left: 4px solid #007bff;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.message-title {
+    font-weight: bold;
+}
+
+.message-date {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.message-content {
+    margin: 10px 0;
+}
+
+.mark-read {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.mark-read:hover {
+    text-decoration: underline;
+}
+
+.unread-count {
+    display: inline-block;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    font-size: 12px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.tab-link.active .unread-count {
+    background: #fff;
+    color: #dc3545;
+}
+
+.message-actions {
+    margin-top: 10px;
+}
+
+.delete-message {
+    color: #dc3545;
+    text-decoration: none;
+}
+
+.delete-message:hover {
+    text-decoration: underline;
+}
+
+.message-actions .delete-all-read {
+    color: #dc3545;
+    text-decoration: none;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.message-actions .delete-all-read:hover {
+    text-decoration: underline;
+}
+
+.message-filter {
+    margin-bottom: 15px;
+}
+.message-filter label {
+    margin-right: 10px;
+}
+.message-list .message-item {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 5px;
+    border-radius: 4px; /* Закругленные углы для красоты */
+}
+.message-list .message-item.unread {
+    background-color: #f8f9fa; /* Лёгкий серый для непрочитанных */
+}
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.message-title {
+    font-weight: bold;
+}
+.message-date {
+    color: #666;
+}
+.message-content {
+    margin: 5px 0;
+}
+
+/* Цвета для категорий */
+.message-item.category-general {
+    background-color: #e9ecef; /* Серый для "Общее" */
+}
+.message-item.category-news {
+    background-color: #d4edda; /* Зелёный для "Новости" */
+}
+.message-item.category-alert {
+    background-color: #fff3cd; /* Жёлтый для "Оповещения" */
+}
+.message-item.category-personal {
+    background-color: #cce5ff; /* Голубой для "Личные" */
+}
+
+/* Перекрытие цвета непрочитанных сообщений с учетом категории */
+.message-item.unread.category-general {
+    background-color: #dee2e6; /* Чуть темнее серый */
+}
+.message-item.unread.category-news {
+    background-color: #c3e6cb; /* Чуть темнее зелёный */
+}
+.message-item.unread.category-alert {
+    background-color: #ffeeba; /* Чуть темнее жёлтый */
+}
+.message-item.unread.category-personal {
+    background-color: #b8daff; /* Чуть темнее голубой */
+}
+
+.profile-field .field-value input[type="checkbox"] {
+    vertical-align: middle;
+    margin-right: 5px;
+}
+.profile-field .field-value label {
+    vertical-align: middle;
+}
+
+.mods-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.mods-table th, .mods-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.mods-table th {
+    background-color: #f2f2f2;
+}
+
+.mods-table img {
+    max-width: 50px;
+    height: auto;
+}
