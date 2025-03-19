@@ -6,9 +6,7 @@ jQuery(document).ready(function($) {
         console.log('steamAuthAjax:', steamAuthAjax);
     }
 
-    let iconsData = [];
     const defaultIcons = ['fa-user', 'fa-steam', 'fa-envelope', 'fa-link', 'fa-phone', 'fa-home', 'fa-lock', 'fa-key', 'fa-cog', 'fa-circle'];
-    let iconsLoaded = false;
 
     // Список популярных эмодзи
     const emojiList = [
@@ -210,71 +208,59 @@ jQuery(document).ready(function($) {
         });
     });
 
-    function loadIcons(callback) {
-        if (iconsLoaded) {
-            if (steamAuthAjax.debug) console.log('Иконки уже загружены:', iconsData);
-            callback();
-            return;
-        }
+    let cachedIcons = null;
 
-        if (steamAuthAjax.debug) console.log('Попытка загрузки icons.json');
-        $.getJSON('https://semods.art/wp-content/plugins/steam-auth/icons.json', function(data) {
-            if (steamAuthAjax.debug) console.log('Ответ от icons.json:', data);
-            if (data && typeof data === 'object' && !Array.isArray(data)) {
-                iconsData = Object.keys(data).map(key => {
-                    const style = data[key].styles[0];
-                    const prefix = style === 'brands' ? 'fab' : 'fas';
-                    return { id: `fa-${key}`, prefix: prefix, text: `fa-${key}` };
-                });
-                if (steamAuthAjax.debug) console.log('Иконки извлечены из объекта:', iconsData.length, 'элементов', iconsData.slice(0, 10));
-            } else if (Array.isArray(data) && data.length > 0) {
-                iconsData = data.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-                if (steamAuthAjax.debug) console.log('Полный список иконок загружен:', iconsData.length, 'элементов', iconsData.slice(0, 10));
-            } else {
-                iconsData = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-                if (steamAuthAjax.debug) console.log('Данные из icons.json некорректны, используется запасной список:', iconsData);
-            }
-            iconsLoaded = true;
-            callback();
-        }).fail(function(xhr, status, error) {
-            iconsData = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-            if (steamAuthAjax.debug) console.log('Ошибка загрузки icons.json:', status, error, 'используется запасной список:', iconsData);
-            iconsLoaded = true;
-            callback();
-        });
+function loadIcons(callback) {
+    if (cachedIcons) {
+        if (steamAuthAjax.debug) console.log('Иконки взяты из локального кэша:', cachedIcons.length);
+        callback(cachedIcons);
+        return;
     }
 
-    function initIconSelect() {
-        if (steamAuthAjax.debug) console.log('Инициализация Select2 для', $('.icon-select').length, 'элементов');
-        if (!Array.isArray(iconsData) || iconsData.length === 0) {
-            if (steamAuthAjax.debug) console.error('iconsData не массив или пустой перед инициализацией:', iconsData);
-            iconsData = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
+    $.ajax({
+        url: steamAuthAjax.home_url + '/wp-json/steam-auth/v1/icons',
+        method: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            cachedIcons = data.data.map(icon => ({
+                id: icon.id,
+                text: icon.text,
+                prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas' // Добавляем prefix, если нужно
+            }));
+            if (steamAuthAjax.debug) console.log('Иконки загружены через REST:', cachedIcons.length);
+            callback(cachedIcons);
+        },
+        error: function(xhr, status, error) {
+            cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
+            if (steamAuthAjax.debug) console.error('Ошибка загрузки иконок:', error, 'используется дефолтный список');
+            callback(cachedIcons);
         }
-        $('.icon-select').each(function() {
-            const $select = $(this);
-            if ($select.hasClass('select2-hidden-accessible')) {
-                $select.select2('destroy');
-            }
-            $select.select2({
-                width: '100%',
-                placeholder: 'Выберите иконку',
-                allowClear: true,
-                templateResult: formatIcon,
-                templateSelection: formatIcon,
-                data: iconsData,
-                matcher: function(params, data) {
-                    if (!params.term || params.term.trim() === '') return data;
-                    if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) return data;
-                    return null;
-                }
-            });
-            const selected = $select.data('selected');
-            if (selected) {
-                if (steamAuthAjax.debug) console.log('Установка значения', selected, 'для', $select.attr('name'));
-                $select.val(selected).trigger('change');
+    });
+}
+
+function initIconSelect($elements, icons) {
+    $elements.each(function() {
+        const $select = $(this);
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+        $select.select2({
+            width: '100%',
+            placeholder: 'Выберите иконку',
+            allowClear: true,
+            templateResult: formatIcon,
+            templateSelection: formatIcon,
+            data: icons,
+            matcher: function(params, data) {
+                if (!params.term || params.term.trim() === '') return data;
+                if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) return data;
+                return null;
             }
         });
-    }
+        const selected = $select.data('selected') || $select.data('saved-value');
+        if (selected) $select.val(selected).trigger('change');
+    });
+}
 
     function formatIcon(state) {
         if (!state.id) return state.text;
@@ -420,8 +406,8 @@ jQuery(document).ready(function($) {
                     showNotification(response.data.message, 'success');
                     $.post(steamAuthAjax.ajaxurl, { action: 'steam_auth_load_tab', tab: 'profile' }, function(response) {
                         $('#tab-content').html(response);
-                        loadIcons(function() {
-                            initIconSelect();
+                        loadIcons(function(icons) {
+                            initIconSelect($('.steam-auth-icon-select'), icons);
                         });
                     });
                 } else {
@@ -669,20 +655,22 @@ jQuery(document).ready(function($) {
         });
     });
 
+    // Обновляем обработчик вкладки Profile
     $(document).on('steam_auth_tab_loaded', function(e, tab) {
         if (tab === 'profile') {
-            loadIcons(function() {
-                initIconSelect();
+            loadIcons(function(icons) {
+                initIconSelect($('.steam-auth-icon-select'), icons);
+                if (steamAuthAjax.debug) console.log('Select2 инициализирован для Profile');
             });
         }
     });
 
+    // Обновляем обработчик добавления кастомных полей
     $(document).on('click', '#add-custom-field', function(e) {
         e.preventDefault();
-        if (steamAuthAjax.debug) console.log('Клик по кнопке "Добавить поле"');
         const tbody = $('#custom-fields tbody');
-        const fieldCount = tbody.find('tr').length; // Используем счётчик вместо timestamp для простоты
-        const tempKey = `new_field_${fieldCount}`; // Временный ключ
+        const fieldCount = tbody.find('tr').length;
+        const tempKey = `new_field_${fieldCount}`;
         const row = `
             <tr data-field-key="${tempKey}">
                 <td><input type="text" name="custom_fields[${tempKey}][name]" value="" placeholder="Имя поля" required></td>
@@ -698,15 +686,13 @@ jQuery(document).ready(function($) {
                 <td><input type="checkbox" name="custom_fields[${tempKey}][visible]"></td>
                 <td><input type="checkbox" name="custom_fields[${tempKey}][editable]"></td>
                 <td>
-                    <select name="custom_fields[${tempKey}][icon]" class="icon-select" data-selected="">
-                        <option value="">Выберите иконку</option>
-                    </select>
+                    <select name="custom_fields[${tempKey}][icon]" class="icon-select steam-auth-icon-select" data-selected=""></select>
                 </td>
                 <td><button type="button" class="remove-field">Удалить</button></td>
             </tr>`;
         tbody.append(row);
-        loadIcons(function() {
-            initIconSelect();
+        loadIcons(function(icons) {
+            initIconSelect($('tr[data-field-key="' + tempKey + '"] .steam-auth-icon-select'), icons);
         });
     });
 

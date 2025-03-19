@@ -297,7 +297,7 @@ function steam_profile_shortcode() {
                         error_log("Steam Auth: Ошибка декодирования icons.json");
                         $icons = [];
                     } else {
-                        error_log("Steam Auth: Иконки загружены, количество: " . count($icons));
+                        error_log("Steam Auth: Иконки закэшированы, количество: " . count($icons));
                     }
                 }
             }
@@ -316,10 +316,8 @@ function steam_profile_shortcode() {
         $icon_key = str_replace('fa-', '', $icon_name);
         if (isset($steam_auth_icons[$icon_key])) {
             $style = $steam_auth_icons[$icon_key]['styles'][0];
-            error_log("Steam Auth: Иконка $icon_name -> $style");
             return $style === 'brands' ? 'fab' : 'fas';
         }
-        error_log("Steam Auth: Иконка $icon_name не найдена, возврат fas");
         return 'fas';
     }
 
@@ -1169,7 +1167,27 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true' 
     ]);
 
+    register_rest_route('steam-auth/v1', '/icons', [
+        'methods' => 'GET',
+        'callback' => 'get_cached_icons',
+        'permission_callback' => function () {
+            return current_user_can('manage_options'); // Только для админов
+        }
+    ]);
+
 });
+
+function get_cached_icons($request) {
+    global $steam_auth_icons; // Используем глобальный кэш
+    $formatted_icons = [];
+    foreach ($steam_auth_icons as $key => $data) {
+        $formatted_icons[] = [
+            'id' => 'fa-' . $key,
+            'text' => $key
+        ];
+    }
+    return rest_ensure_response($formatted_icons);
+}
 
 function check_plugin_health($request) {
     return [
