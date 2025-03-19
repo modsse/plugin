@@ -22,7 +22,7 @@ function steam_auth_enqueue_styles() {
 // Подключаем стили и скрипты админки
 add_action('admin_enqueue_scripts', function($hook) {
     if ($hook === 'toplevel_page_steam-auth') {
-        wp_enqueue_style('steam-auth-admin', plugins_url('css/admin.css', __FILE__), [], '2.10.2');
+        wp_enqueue_style('steam-auth-admin', plugin_dir_url(__FILE__) . 'css/admin.css', [], filemtime(plugin_dir_path(__FILE__) . 'css/admin.css'));
         wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
         wp_enqueue_style('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css');
         wp_enqueue_script('jquery');

@@ -974,6 +974,7 @@ jQuery(document).ready(function($) {
         });
     });
 
+    // Обработка очистки логов
     $('#clear-logs').on('click', function(e) {
         e.preventDefault();
         var $button = $(this);
@@ -988,9 +989,7 @@ jQuery(document).ready(function($) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Обновляем список логов
                         $('.steam-auth-logs').html('<p>Логов нет.</p>');
-                        // Показываем уведомление
                         $('#steam-auth-notification')
                             .removeClass('error')
                             .addClass('success')
@@ -1014,7 +1013,7 @@ jQuery(document).ready(function($) {
                     $('#steam-auth-notification')
                         .removeClass('success')
                         .addClass('error')
-                        .html('Ошибка при очистке логов. Проверьте консоль.')
+                        .html('Ошибка при очистке логов')
                         .slideDown(300)
                         .delay(3000)
                         .slideUp(300);
