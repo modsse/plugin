@@ -211,17 +211,19 @@ function send_discord_notification($discord_id, $title, $description, $template 
     }
 }
 
-add_action('wp_ajax_steam_auth_clear_logs', 'steam_auth_clear_logs');
 function steam_auth_clear_logs() {
-    check_ajax_referer('steam_auth_nonce', 'nonce');
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
+
+    // Проверка прав доступа
     if (!current_user_can('manage_options')) {
-        wp_die('Недостаточно прав для очистки логов');
+        wp_send_json_error(array('message' => 'Недостаточно прав'));
     }
-    update_option('steam_auth_logs', []);
-    $logs = [];
-    require __DIR__ . '/templates/logs.php';
-    wp_die();
+
+    $wpdb->query("TRUNCATE TABLE $table_name"); // Очищаем таблицу
+    wp_send_json_success(array('message' => 'Логи успешно очищены'));
 }
+add_action('wp_ajax_steam_auth_clear_logs', 'steam_auth_clear_logs');
 
 add_action('wp_ajax_steam_auth_save_settings', 'steam_auth_save_settings');
 function steam_auth_save_settings() {

@@ -138,22 +138,34 @@ function get_steam_user_data($steam_id) {
 
 // Логирование действий
 function log_steam_action($steam_id, $action, $discord_id = '', $discord_username = '', $error = '') {
-    $logs = get_option('steam_auth_logs', []);
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
     $log_limit = (int) get_option('steam_auth_log_limit', 50);
 
-    $log_entry = [
-        'date' => current_time('mysql'),
-        'steam_id' => $steam_id,
-        'action' => $action,
-    ];
-    if ($discord_id) $log_entry['discord_id'] = $discord_id;
-    if ($discord_username) $log_entry['discord_username'] = $discord_username;
-    if ($error) $log_entry['error'] = $error;
+    // Запись лога в таблицу
+    $wpdb->insert(
+        $table_name,
+        array(
+            'date'            => current_time('mysql'),
+            'steam_id'        => $steam_id,
+            'action'          => $action,
+            'discord_id'      => $discord_id,
+            'discord_username'=> $discord_username,
+            'error'           => $error
+        )
+    );
 
-    $logs[] = $log_entry;
-    update_option('steam_auth_logs', array_slice($logs, -$log_limit));
+    // Ограничение количества записей (удаляем старые, если превышен лимит)
+    $total_logs = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+    if ($total_logs > $log_limit) {
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM $table_name WHERE id <= %d",
+            $wpdb->get_var("SELECT id FROM $table_name ORDER BY id ASC LIMIT 1 OFFSET " . ($log_limit - 1))
+        ));
+    }
 
-    $bot_url =  get_option('bot_url_qery', '');
+    // Отправка данных в бот
+    $bot_url = get_option('bot_url_qery', '');
     $data = [
         'action' => $action,
         'steam_id' => $steam_id,
@@ -1771,6 +1783,28 @@ function fetch_discord_roles() {
     }
     return $roles;
 }
+
+// Функция для создания таблицы логов
+function steam_auth_create_logs_table() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs'; // Например, wp_steam_auth_logs
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE $table_name (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+        action varchar(255) NOT NULL,
+        user_id bigint(20) NOT NULL,
+        details text NOT NULL,
+        PRIMARY KEY  (id)
+    ) $charset_collate;";
+
+    require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+    dbDelta( $sql ); // Создает или обновляет таблицу
+}
+
+// Регистрируем хук на активацию плагина
+register_activation_hook( __FILE__, 'steam_auth_create_logs_table' );
 
 
 ?>
