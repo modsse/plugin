@@ -111,7 +111,7 @@ function handle_steam_auth() {
     }
 }
 
-// Получение данных Steam
+// Получение данных Stea
 function get_steam_user_data($steam_id) {
     $api_key = get_option('steam_api_key', '');
     if (empty($api_key)) {

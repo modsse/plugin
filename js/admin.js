@@ -931,7 +931,7 @@ jQuery(document).ready(function($) {
             library: { type: 'image' } // Ограничиваем выбор только изображениями
         });
     
-        // При выборе изображения
+        // При выборе изображени
         mediaFrame.on('select', function() {
             const attachment = mediaFrame.state().get('selection').first().toJSON();
             imageField.val(attachment.url);
