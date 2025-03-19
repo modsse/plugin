@@ -280,13 +280,11 @@ function steam_profile_shortcode() {
         return !$message['is_read'];
     }));
 
-    // Проверить ..
     function get_icon_prefix($icon_name) {
-        $icons = wp_cache_get('steam_auth_icons');
-        if ($icons === false) {
-            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . '../icons.json');
+        static $icons = null;
+        if ($icons === null) {
+            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . 'icons.json');
             $icons = $icons_json ? json_decode($icons_json, true) : [];
-            wp_cache_set('steam_auth_icons', $icons, '', DAY_IN_SECONDS);
         }
         $icon_key = str_replace('fa-', '', $icon_name);
         if (isset($icons[$icon_key])) {
