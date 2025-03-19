@@ -350,8 +350,10 @@ function steam_auth_reject_unlink_discord() {
         unset($discord_unlink_requests[$user_id]);
         update_option('steam_auth_discord_unlink_requests', $discord_unlink_requests);
         log_steam_action($steam_id, 'discord_unlink_rejected', $discord_id, $discord_username);
-
+        
         wp_send_json_success('Запрос на отвязку отклонён');
+        $template_settings = [/* ... */];
+        send_discord_message($discord_id, 'Запрос на отвязку отклонён', "Ваш запрос на отвязку Discord ($discord_username) от Steam ($steam_id) был отклонён администратором.", $template_settings);
     }
     wp_send_json_error('Запрос не найден');
 }
