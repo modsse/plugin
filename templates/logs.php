@@ -1,18 +1,7 @@
-<?php
-function get_steam_auth_logs($limit = 50) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'steam_auth_logs';
-    return $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table_name ORDER BY date DESC LIMIT %d",
-        $limit
-    ));
-}
-?>
-
 <div class="wrap">
     <h1>Логи Steam Auth</h1>
     <?php
-    $logs = get_steam_auth_logs();
+    $logs = get_steam_auth_logs(); // Используем глобальную функцию
     if ($logs) {
         echo '<ul>';
         foreach ($logs as $log) {

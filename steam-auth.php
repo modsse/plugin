@@ -1787,24 +1787,36 @@ function fetch_discord_roles() {
 // Функция для создания таблицы логов
 function steam_auth_create_logs_table() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'steam_auth_logs'; // Например, wp_steam_auth_logs
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
     $charset_collate = $wpdb->get_charset_collate();
 
     $sql = "CREATE TABLE $table_name (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
-        time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+        date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+        steam_id varchar(255) NOT NULL,
         action varchar(255) NOT NULL,
-        user_id bigint(20) NOT NULL,
-        details text NOT NULL,
+        discord_id varchar(255) DEFAULT '' NOT NULL,
+        discord_username varchar(255) DEFAULT '' NOT NULL,
+        error text,
         PRIMARY KEY  (id)
     ) $charset_collate;";
 
     require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-    dbDelta( $sql ); // Создает или обновляет таблицу
+    dbDelta( $sql );
 }
 
-// Регистрируем хук на активацию плагина
+// Проверка и создание таблицы при загрузке плагина
+function steam_auth_check_tables() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_logs';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        steam_auth_create_logs_table();
+    }
+}
+
+// Регистрируем хук на активацию и проверку при загрузке
 register_activation_hook( __FILE__, 'steam_auth_create_logs_table' );
+add_action('plugins_loaded', 'steam_auth_check_tables');
 
 
 ?>

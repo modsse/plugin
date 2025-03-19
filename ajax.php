@@ -215,14 +215,20 @@ function steam_auth_clear_logs() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
 
-    // Проверка прав доступа
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => 'Недостаточно прав'));
+        return; // Добавляем return для явного завершения
     }
 
-    $wpdb->query("TRUNCATE TABLE $table_name"); // Очищаем таблицу
-    wp_send_json_success(array('message' => 'Логи успешно очищены'));
+    // Проверяем существование таблицы перед очисткой
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        $wpdb->query("TRUNCATE TABLE $table_name");
+        wp_send_json_success(array('message' => 'Логи успешно очищены'));
+    } else {
+        wp_send_json_error(array('message' => 'Таблица логов не найдена'));
+    }
 }
+
 add_action('wp_ajax_steam_auth_clear_logs', 'steam_auth_clear_logs');
 
 add_action('wp_ajax_steam_auth_save_settings', 'steam_auth_save_settings');
