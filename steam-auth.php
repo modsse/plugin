@@ -12,54 +12,6 @@ if (!file_exists(__DIR__ . '/lightopenid.php')) {
 require_once __DIR__ . '/lightopenid.php';
 require_once __DIR__ . '/ajax.php';
 
-// Глобальная переменная для иконок
-global $steam_auth_icons;
-$steam_auth_icons = []; // Инициализируем по умолчанию как пустой массив
-
-// Функция загрузки иконок
-function load_steam_auth_icons() {
-    global $steam_auth_icons;
-    if (!empty($steam_auth_icons)) {
-        error_log("Steam Auth: Иконки уже загружены, пропускаем");
-        return;
-    }
-
-    $icons_file = plugin_dir_path(__FILE__) . 'icons.json';
-    error_log("Steam Auth: Проверка файла иконок: " . $icons_file);
-
-    if (file_exists($icons_file)) {
-        $icons_json = file_get_contents($icons_file);
-        if ($icons_json === false || empty($icons_json)) {
-            error_log("Steam Auth: Не удалось прочитать содержимое icons.json");
-            $steam_auth_icons = [];
-        } else {
-            $steam_auth_icons = json_decode($icons_json, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log("Steam Auth: Ошибка декодирования JSON: " . json_last_error_msg());
-                $steam_auth_icons = [];
-            } else {
-                error_log("Steam Auth: Иконки успешно загружены из icons.json, количество: " . count($steam_auth_icons));
-            }
-        }
-    } else {
-        error_log("Steam Auth: Файл icons.json не найден по пути: " . $icons_file);
-        $steam_auth_icons = [];
-    }
-
-    if (empty($steam_auth_icons)) {
-        error_log("Steam Auth: Иконки не загружены, $steam_auth_icons пустой");
-        $steam_auth_icons = [];
-    }
-}
-
-// Инициализация на хуке init
-function steam_auth_init() {
-    error_log("Steam Auth: Инициализация плагина");
-    load_steam_auth_icons();
-}
-add_action('init', 'steam_auth_init');
-
-
 // Подключение стилей
 add_action('wp_enqueue_scripts', 'steam_auth_enqueue_styles');
 function steam_auth_enqueue_styles() {
@@ -106,6 +58,53 @@ function steam_auth_enqueue_scripts() {
         'nonce' => wp_create_nonce('steam_auth_nonce')
     ]);
 }
+
+// Глобальная переменная для иконок
+global $steam_auth_icons;
+$steam_auth_icons = []; // Инициализируем по умолчанию как пустой массив
+
+// Функция загрузки иконок
+function load_steam_auth_icons() {
+    global $steam_auth_icons;
+    if (!empty($steam_auth_icons)) {
+        error_log("Steam Auth: Иконки уже загружены, пропускаем");
+        return;
+    }
+
+    $icons_file = plugin_dir_path(__FILE__) . 'icons.json';
+    error_log("Steam Auth: Проверка файла иконок: " . $icons_file);
+
+    if (file_exists($icons_file)) {
+        $icons_json = file_get_contents($icons_file);
+        if ($icons_json === false || empty($icons_json)) {
+            error_log("Steam Auth: Не удалось прочитать содержимое icons.json");
+            $steam_auth_icons = [];
+        } else {
+            $steam_auth_icons = json_decode($icons_json, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("Steam Auth: Ошибка декодирования JSON: " . json_last_error_msg());
+                $steam_auth_icons = [];
+            } else {
+                error_log("Steam Auth: Иконки успешно загружены из icons.json, количество: " . count($steam_auth_icons));
+            }
+        }
+    } else {
+        error_log("Steam Auth: Файл icons.json не найден по пути: " . $icons_file);
+        $steam_auth_icons = [];
+    }
+
+    if (empty($steam_auth_icons)) {
+        error_log("Steam Auth: Иконки не загружены, $steam_auth_icons пустой");
+        $steam_auth_icons = [];
+    }
+}
+
+// Инициализация на хуке init
+function steam_auth_init() {
+    error_log("Steam Auth: Инициализация плагина");
+    load_steam_auth_icons();
+}
+add_action('init', 'steam_auth_init');
 
 // Отключаем стандартную регистрацию
 add_action('login_form_register', 'disable_default_registration');
@@ -1195,13 +1194,15 @@ function get_cached_icons($request) {
     global $steam_auth_icons;
     if (empty($steam_auth_icons)) {
         error_log("Steam Auth: Иконки не загружены в \$steam_auth_icons");
-        $steam_auth_icons = []; // Инициализируем как пустой массив
+        $steam_auth_icons = [];
     }
 
     $formatted_icons = [];
-    foreach ((array) $steam_auth_icons as $key => $data) { // Приводим к массиву для безопасности
+    foreach ((array) $steam_auth_icons as $key => $data) {
+        $style = !empty($data['styles']) ? $data['styles'][0] : 'solid'; // По умолчанию solid
+        $prefix = ($style === 'brands') ? 'fab' : 'fas';
         $formatted_icons[] = [
-            'id' => 'fa-' . $key,
+            'id' => $prefix . '-' . $key,
             'text' => $key
         ];
     }

@@ -273,10 +273,11 @@ jQuery(document).ready(function($) {
         });
     }
 
-    function formatIcon(state) {
-        if (!state.id) return state.text;
-        const prefix = state.prefix || 'fas';
-        return $(`<span><i class="${prefix} ${state.id}"></i> ${state.text}</span>`);
+    function formatIcon(icon) {
+        if (!icon.id) return icon.text;
+        return jQuery(
+            '<span><i class="' + icon.id + '"></i> ' + icon.text + '</span>'
+        );
     }
 
     function showNotification(message, type) {
