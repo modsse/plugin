@@ -1126,6 +1126,13 @@ add_action('rest_api_init', function () {
             return $api_key === get_option('steam_auth_bot_api_key', '');
         }
     ]);
+
+    register_rest_route('steam-auth/v1', '/health', [
+        'methods' => 'GET',
+        'callback' => 'check_plugin_health',
+        'permission_callback' => '__return_true' 
+    ]);
+
 });
 
 function check_plugin_health($request) {
