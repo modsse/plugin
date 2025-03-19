@@ -4,10 +4,6 @@ Plugin Name: Steam Auth
 Description: Регистрация и авторизация через Steam с анимацией, управляемым профилем и логами
 Version: 2.10.2
 */
-function steam_auth_init() {
-    load_steam_auth_icons(); // Загружаем иконки при инициализации
-}
-add_action('init', 'steam_auth_init');
 
 if (!file_exists(__DIR__ . '/lightopenid.php')) {
     error_log("Steam Auth: Файл lightopenid.php отсутствует");
@@ -15,6 +11,54 @@ if (!file_exists(__DIR__ . '/lightopenid.php')) {
 }
 require_once __DIR__ . '/lightopenid.php';
 require_once __DIR__ . '/ajax.php';
+
+// Глобальная переменная для иконок
+global $steam_auth_icons;
+$steam_auth_icons = []; // Инициализируем по умолчанию как пустой массив
+
+// Функция загрузки иконок
+function load_steam_auth_icons() {
+    global $steam_auth_icons;
+    if (!empty($steam_auth_icons)) {
+        error_log("Steam Auth: Иконки уже загружены, пропускаем");
+        return;
+    }
+
+    $icons_file = plugin_dir_path(__FILE__) . 'icons.json';
+    error_log("Steam Auth: Проверка файла иконок: " . $icons_file);
+
+    if (file_exists($icons_file)) {
+        $icons_json = file_get_contents($icons_file);
+        if ($icons_json === false || empty($icons_json)) {
+            error_log("Steam Auth: Не удалось прочитать содержимое icons.json");
+            $steam_auth_icons = [];
+        } else {
+            $steam_auth_icons = json_decode($icons_json, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("Steam Auth: Ошибка декодирования JSON: " . json_last_error_msg());
+                $steam_auth_icons = [];
+            } else {
+                error_log("Steam Auth: Иконки успешно загружены из icons.json, количество: " . count($steam_auth_icons));
+            }
+        }
+    } else {
+        error_log("Steam Auth: Файл icons.json не найден по пути: " . $icons_file);
+        $steam_auth_icons = [];
+    }
+
+    if (empty($steam_auth_icons)) {
+        error_log("Steam Auth: Иконки не загружены, $steam_auth_icons пустой");
+        $steam_auth_icons = [];
+    }
+}
+
+// Инициализация на хуке init
+function steam_auth_init() {
+    error_log("Steam Auth: Инициализация плагина");
+    load_steam_auth_icons();
+}
+add_action('init', 'steam_auth_init');
+
 
 // Подключение стилей
 add_action('wp_enqueue_scripts', 'steam_auth_enqueue_styles');
@@ -282,38 +326,6 @@ function steam_profile_shortcode() {
     $unread_count = count(array_filter($messages, function($message) {
         return !$message['is_read'];
     }));
-
-    function load_steam_auth_icons() {
-        $icons = get_transient('steam_auth_icons');
-        if ($icons === false) {
-            $icon_file = __DIR__ . '/icons.json';
-            if (!file_exists($icon_file)) {
-                error_log("Steam Auth: Файл icons.json не найден: " . $icon_file);
-                $icons = [];
-            } else {
-                $icons_json = @file_get_contents($icon_file);
-                if ($icons_json === false) {
-                    error_log("Steam Auth: Не удалось прочитать icons.json");
-                    $icons = [];
-                } else {
-                    $icons = json_decode($icons_json, true);
-                    if ($icons === null) {
-                        error_log("Steam Auth: Ошибка декодирования icons.json");
-                        $icons = [];
-                    } else {
-                        error_log("Steam Auth: Иконки закэшированы, количество: " . count($icons));
-                    }
-                }
-            }
-            set_transient('steam_auth_icons', $icons, DAY_IN_SECONDS);
-        } else {
-            error_log("Steam Auth: Иконки из кэша, количество: " . count($icons));
-        }
-        return $icons;
-    }
-    
-    global $steam_auth_icons;
-    $steam_auth_icons = load_steam_auth_icons();
     
     function get_icon_prefix($icon_name) {
         global $steam_auth_icons;
@@ -1172,10 +1184,10 @@ add_action('rest_api_init', function () {
     ]);
 
     register_rest_route('steam-auth/v1', '/icons', [
-        'methods' => 'GET',
-        'callback' => 'get_cached_icons',
-        'permission_callback' => '__return_true', // Отключает проверку
-    ]);
+    'methods' => 'GET',
+    'callback' => 'get_cached_icons',
+    'permission_callback' => '__return_true', // Отключает проверку
+]);
 
 });
 
