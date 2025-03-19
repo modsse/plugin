@@ -204,8 +204,8 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Ошибка AJAX:', status, error);
-                showNotification('Ошибка AJAX', 'error');
+                console.error('Ошибка:', error);
+                showNotification('Ошибка AJAX: ' + error, 'error');
             }
         });
     });

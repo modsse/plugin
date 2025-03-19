@@ -5,6 +5,10 @@ Description: Регистрация и авторизация через Steam �
 Version: 2.10.2
 */
 
+if (!file_exists(__DIR__ . '/lightopenid.php')) {
+    error_log("Steam Auth: Файл lightopenid.php отсутствует");
+    wp_die("Ошибка конфигурации плагина: отсутствует LightOpenID");
+}
 require_once __DIR__ . '/lightopenid.php';
 require_once __DIR__ . '/ajax.php';
 
@@ -111,7 +115,9 @@ function handle_steam_auth() {
 function get_steam_user_data($steam_id) {
     $api_key = get_option('steam_api_key', '');
     if (empty($api_key)) {
-        throw new Exception('API-ключ Steam не настроен');
+        log_steam_action($steam_id, 'steam_api_error', '', '', 'API-ключ Steam не настроен');
+        wp_redirect(home_url() . '?steam_error=' . urlencode('API-ключ Steam не настроен'));
+        exit;
     }
 
     $url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={$api_key}&steamids={$steam_id}";
@@ -162,7 +168,7 @@ function log_steam_action($steam_id, $action, $discord_id = '', $discord_usernam
             'X-API-Key' => get_option('steam_auth_bot_api_key', ''),
         ],
         'method' => 'POST',
-        'timeout' => 5,
+        'timeout' => 15,
     ];
 
     if (get_option('steam_auth_debug', false)) {
@@ -274,10 +280,11 @@ function steam_profile_shortcode() {
     }));
 
     function get_icon_prefix($icon_name) {
-        static $icons = null;
-        if ($icons === null) {
-            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . 'icons.json');
+        $icons = wp_cache_get('steam_auth_icons');
+        if ($icons === false) {
+            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . '../icons.json');
             $icons = $icons_json ? json_decode($icons_json, true) : [];
+            wp_cache_set('steam_auth_icons', $icons, '', DAY_IN_SECONDS);
         }
         $icon_key = str_replace('fa-', '', $icon_name);
         if (isset($icons[$icon_key])) {
@@ -1740,20 +1747,29 @@ function fetch_discord_roles() {
     $guild_id = '958141724054671420';
     if (!$bot_token) return [];
 
-    $url = "https://discord.com/api/v10/guilds/{$guild_id}/roles";
-    $response = wp_remote_get($url, [
-        'headers' => ['Authorization' => "Bot {$bot_token}"]
-    ]);
-    if (is_wp_error($response)) return [];
-    $roles = json_decode(wp_remote_retrieve_body($response), true);
-    $role_map = [];
-    foreach ($roles as $role) {
-        $role_map[$role['id']] = [
-            'name' => $role['name'],
-            'color' => $role['color']
-        ];
+    $roles = get_transient('steam_auth_discord_roles');
+    if ($roles === false) {
+        $url = "https://discord.com/api/v10/guilds/{$guild_id}/roles";
+        $response = wp_remote_get($url, [
+            'headers' => ['Authorization' => "Bot {$bot_token}"],
+            'timeout' => 15
+        ]);
+        if (is_wp_error($response)) {
+            error_log("Steam Auth: Ошибка получения ролей Discord: " . $response->get_error_message());
+            return [];
+        }
+        $roles = json_decode(wp_remote_retrieve_body($response), true);
+        $role_map = [];
+        foreach ($roles as $role) {
+            $role_map[$role['id']] = [
+                'name' => $role['name'],
+                'color' => $role['color']
+            ];
+        }
+        set_transient('steam_auth_discord_roles', $role_map, HOUR_IN_SECONDS);
+        return $role_map;
     }
-    return $role_map;
+    return $roles;
 }
 
 
