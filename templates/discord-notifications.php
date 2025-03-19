@@ -96,7 +96,7 @@ $custom_templates = get_option('steam_auth_discord_custom_templates', []);
         </tr>
     </table>
     <p class="submit">
-        <input type="submit" class="button-primary" value="Сохранить изменения" />
+        <input type="submit" class="button-primary" value="Сохранить изменения" /> <i class="fa fa-save"></i>
         <button type="button" id="discord-embed-preview" class="button">Предпросмотр</button>
         <button type="button" id="discord-embed-test" class="button">Отправить тестовое</button>
     </p>

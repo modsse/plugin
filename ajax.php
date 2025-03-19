@@ -549,6 +549,8 @@ add_action('wp_ajax_steam_auth_test_discord_embed', function() {
     wp_send_json_success('Тестовое сообщение отправлено.');
 });
 
+
+
 // Добавим обработчик для сохранения пользовательских шаблонов (из предыдущих изменений)
 add_action('wp_ajax_steam_auth_save_custom_template', 'steam_auth_save_custom_template');
 /**
@@ -627,8 +629,17 @@ function steam_auth_update_discord_notifications() {
 
     wp_send_json_success('Настройки обновлены');
 }
-
 add_action('wp_ajax_steam_auth_bulk_delete_messages', 'steam_auth_bulk_delete_messages');
+
+/**
+ * AJAX-обработчик массового удаления сообщений администратора.
+ *
+ * Функция-обработчик AJAX-запроса, вызываемый при отправке формы массового
+ * удаления сообщений администратора. Параметром запроса является массив
+ * ID сообщений, подлежащих удалению.
+ *
+ * @since 1.3
+ */
 function steam_auth_bulk_delete_messages() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Недостаточно прав');
