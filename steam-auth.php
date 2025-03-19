@@ -1170,9 +1170,7 @@ add_action('rest_api_init', function () {
     register_rest_route('steam-auth/v1', '/icons', [
         'methods' => 'GET',
         'callback' => 'get_cached_icons',
-        'permission_callback' => function () {
-            return current_user_can('manage_options'); // Только для админов
-        }
+        'permission_callback' => '__return_true' 
     ]);
 
 });

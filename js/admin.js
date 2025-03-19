@@ -210,33 +210,42 @@ jQuery(document).ready(function($) {
 
     let cachedIcons = null;
 
-function loadIcons(callback) {
-    if (cachedIcons) {
-        if (steamAuthAjax.debug) console.log('Иконки взяты из локального кэша:', cachedIcons.length);
-        callback(cachedIcons);
-        return;
-    }
-
-    $.ajax({
-        url: steamAuthAjax.home_url + '/api/steam-auth/v1/icons',
-        method: 'GET',
-        dataType: 'json',
-        success: function(data) {
-            cachedIcons = data.data.map(icon => ({
-                id: icon.id,
-                text: icon.text,
-                prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas' // Добавляем prefix, если нужно
-            }));
-            if (steamAuthAjax.debug) console.log('Иконки загружены через REST:', cachedIcons.length);
+    function loadIcons(callback) {
+        if (cachedIcons) {
+            if (steamAuthAjax.debug) console.log('Иконки взяты из локального кэша:', cachedIcons.length);
             callback(cachedIcons);
-        },
-        error: function(xhr, status, error) {
-            cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
-            if (steamAuthAjax.debug) console.error('Ошибка загрузки иконок:', error, 'используется дефолтный список');
-            callback(cachedIcons);
+            return;
         }
-    });
-}
+    
+        const apiUrl = steamAuthAjax.home_url + '/api/steam-auth/v1/icons';
+        if (steamAuthAjax.debug) console.log('Запрос к REST API:', apiUrl);
+    
+        $.ajax({
+            url: apiUrl,
+            method: 'GET',
+            dataType: 'json',
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', steamAuthAjax.nonce);
+            },
+            success: function(data) {
+                cachedIcons = data.data.map(icon => ({
+                    id: icon.id,
+                    text: icon.text,
+                    prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas'
+                }));
+                if (steamAuthAjax.debug) console.log('Иконки загружены через REST:', cachedIcons.length);
+                callback(cachedIcons);
+            },
+            error: function(xhr, status, error) {
+                cachedIcons = defaultIcons.map(icon => ({ id: icon, prefix: 'fas', text: icon }));
+                if (steamAuthAjax.debug) {
+                    console.error('Ошибка загрузки иконок:', status, error, 'Response:', xhr.responseText);
+                    console.log('Используется дефолтный список:', cachedIcons);
+                }
+                callback(cachedIcons);
+            }
+        });
+    }
 
 function initIconSelect($elements, icons) {
     $elements.each(function() {
