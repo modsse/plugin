@@ -279,16 +279,32 @@ function steam_profile_shortcode() {
         return !$message['is_read'];
     }));
 
-    function get_icon_prefix($icon_name) {
-        $icons = wp_cache_get('steam_auth_icons');
+    function load_steam_auth_icons() {
+        $icons = get_transient('steam_auth_icons');
         if ($icons === false) {
-            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . '../icons.json');
-            $icons = $icons_json ? json_decode($icons_json, true) : [];
-            wp_cache_set('steam_auth_icons', $icons, '', DAY_IN_SECONDS);
+            $icon_file = __DIR__ . '/icons.json';
+            if (!file_exists($icon_file)) {
+                error_log("Steam Auth: Файл icons.json не найден по пути: " . $icon_file);
+                $icons = [];
+            } else {
+                $icons_json = @file_get_contents($icon_file);
+                $icons = $icons_json ? json_decode($icons_json, true) : [];
+                set_transient('steam_auth_icons', $icons, DAY_IN_SECONDS);
+                error_log("Steam Auth: Иконки успешно закэшированы (transient)");
+            }
+        } else {
+            error_log("Steam Auth: Иконки загружены из transient");
         }
+        return $icons;
+    }
+    
+    $steam_auth_icons = load_steam_auth_icons();
+    
+    function get_icon_prefix($icon_name) {
+        global $steam_auth_icons;
         $icon_key = str_replace('fa-', '', $icon_name);
-        if (isset($icons[$icon_key])) {
-            $style = $icons[$icon_key]['styles'][0];
+        if (isset($steam_auth_icons[$icon_key])) {
+            $style = $steam_auth_icons[$icon_key]['styles'][0];
             return $style === 'brands' ? 'fab' : 'fas';
         }
         return 'fas';
