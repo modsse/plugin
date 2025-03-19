@@ -4,6 +4,10 @@ Plugin Name: Steam Auth
 Description: Регистрация и авторизация через Steam с анимацией, управляемым профилем и логами
 Version: 2.10.2
 */
+function steam_auth_init() {
+    load_steam_auth_icons(); // Загружаем иконки при инициализации
+}
+add_action('init', 'steam_auth_init');
 
 if (!file_exists(__DIR__ . '/lightopenid.php')) {
     error_log("Steam Auth: Файл lightopenid.php отсутствует");
@@ -1179,15 +1183,17 @@ function get_cached_icons($request) {
     global $steam_auth_icons;
     if (empty($steam_auth_icons)) {
         error_log("Steam Auth: Иконки не загружены в \$steam_auth_icons");
+        $steam_auth_icons = []; // Инициализируем как пустой массив
     }
 
     $formatted_icons = [];
-    foreach ($steam_auth_icons as $key => $data) {
+    foreach ((array) $steam_auth_icons as $key => $data) { // Приводим к массиву для безопасности
         $formatted_icons[] = [
             'id' => 'fa-' . $key,
             'text' => $key
         ];
     }
+    error_log("Steam Auth: Возвращено иконок: " . count($formatted_icons));
     return rest_ensure_response($formatted_icons);
 }
 

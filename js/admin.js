@@ -222,10 +222,21 @@ jQuery(document).ready(function($) {
             method: 'GET',
             dataType: 'json',
             success: function(data) {
-                cachedIcons = data.data.map(icon => ({
+                if (steamAuthAjax.debug) console.log('Полученные данные от REST API:', data);
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.warn('Данные от сервера пусты или некорректны, используются дефолтные иконки');
+                    cachedIcons = [
+                        { id: 'fa-user', text: 'user', prefix: 'fas' },
+                        { id: 'fa-steam', text: 'steam', prefix: 'fab' },
+                        { id: 'fa-gear', text: 'gear', prefix: 'fas' }
+                    ];
+                    callback(cachedIcons);
+                    return;
+                }
+                cachedIcons = data.map(icon => ({
                     id: icon.id,
                     text: icon.text,
-                    prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas' // Добавляем prefix, если нужно
+                    prefix: icon.id.startsWith('fa-brands') ? 'fab' : 'fas'
                 }));
                 if (steamAuthAjax.debug) console.log('Иконки загружены через REST:', cachedIcons.length);
                 callback(cachedIcons);
