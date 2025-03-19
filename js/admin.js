@@ -227,7 +227,7 @@ jQuery(document).ready(function($) {
             method: 'GET',
             dataType: 'json',
             xhrFields: {
-                withCredentials: true // Включает отправку куки с запросом
+                withCredentials: true // Явно отправляем куки
             },
             beforeSend: function(xhr) {
                 xhr.setRequestHeader('X-WP-Nonce', steamAuthAjax.nonce);
@@ -242,6 +242,7 @@ jQuery(document).ready(function($) {
                 callback(cachedIcons);
             },
             error: function(xhr, status, error) {
+                console.error('Ошибка AJAX:', xhr.status, xhr.responseText); // Добавляем больше отладки
                 if (xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.code === 'rest_no_auth') {
                     alert('Ваша сессия истекла. Пожалуйста, войдите снова.');
                     window.location.href = steamAuthAjax.home_url + '/wp-login.php?redirect_to=' + encodeURIComponent(window.location.href);
