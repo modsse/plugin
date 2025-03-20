@@ -1064,7 +1064,7 @@ function steam_auth_sanitize_custom_templates($input) {
     return $output;
 }
 
-// steam-auth.php
+// В steam-auth.php, функция steam_auth_settings_page
 function steam_auth_settings_page() {
     $notification = '';
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
@@ -1084,6 +1084,7 @@ function steam_auth_settings_page() {
             <a href="#messages" class="nav-tab" data-tab="messages">Сообщения</a>
             <a href="#discord-notifications" class="nav-tab" data-tab="discord-notifications">Discord Notifications</a>
             <a href="#mods" class="nav-tab" data-tab="mods">Моды</a>
+            <a href="#tickets" class="nav-tab" data-tab="tickets">Тикеты</a> <!-- Новая вкладка -->
         </div>
         <div id="tab-content"></div>
 
@@ -1903,4 +1904,46 @@ function get_steam_auth_logs($limit = 50) {
 
     return $results;
 }
+
+function steam_auth_register_ticket_post_type() {
+    register_post_type('steam_ticket', array(
+        'labels' => array(
+            'name' => 'Тикеты',
+            'singular_name' => 'Тикет'
+        ),
+        'public' => false,
+        'show_ui' => true,
+        'supports' => array('title', 'editor')
+    ));
+}
+add_action('init', 'steam_auth_register_ticket_post_type');
+
+function steam_auth_ticket_metabox() {
+    add_meta_box(
+        'steam_ticket_status',
+        'Статус тикета',
+        'steam_auth_ticket_status_callback',
+        'steam_ticket',
+        'side'
+    );
+}
+add_action('add_meta_boxes', 'steam_auth_ticket_metabox');
+
+function steam_auth_ticket_status_callback($post) {
+    $status = get_post_meta($post->ID, 'ticket_status', true) ?: 'open';
+    ?>
+    <select name="ticket_status">
+        <option value="open" <?php selected($status, 'open'); ?>>Открыт</option>
+        <option value="in_progress" <?php selected($status, 'in_progress'); ?>>В работе</option>
+        <option value="closed" <?php selected($status, 'closed'); ?>>Закрыт</option>
+    </select>
+    <?php
+}
+
+function steam_auth_save_ticket_meta($post_id) {
+    if (isset($_POST['ticket_status'])) {
+        update_post_meta($post_id, 'ticket_status', sanitize_text_field($_POST['ticket_status']));
+    }
+}
+add_action('save_post', 'steam_auth_save_ticket_meta');
 ?>

@@ -1,7 +1,8 @@
 <?php
 add_action('wp_ajax_steam_auth_load_tab', 'steam_auth_load_tab');
+// В ajax.php, функция steam_auth_load_tab
 function steam_auth_load_tab() {
-    $tab = isset($_POST['tab']) ? $_POST['tab'] : 'general';
+    $tab = isset($_POST['tab']) ? sanitize_key($_POST['tab']) : 'general';
     $api_key = get_option('steam_api_key', '');
     $bot_url = get_option('bot_url_qery', '');
     $default_role = get_option('steam_default_role', 'subscriber');
@@ -9,7 +10,6 @@ function steam_auth_load_tab() {
     $admin_key = get_option('steam_auth_admin_key', '');
     
     $profile_settings = get_option('steam_profile_settings', []);
-    //$logs = get_option('steam_auth_logs', []);
     $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
     $roles = wp_roles()->get_names();
 
@@ -33,9 +33,15 @@ function steam_auth_load_tab() {
     } elseif ($tab === 'mods') {
         $discord_roles = fetch_discord_roles();
         $mods_config = get_option('steam_auth_mods_config', []);
-        // Добавляем массив выбранных ролей для модов
         $selected_mod_roles = isset($mods_config['selected_roles']) ? $mods_config['selected_roles'] : [];
         require __DIR__ . '/templates/mods.php';
+    } elseif ($tab === 'tickets') {
+        $tickets = get_posts(array(
+            'post_type' => 'steam_ticket',
+            'posts_per_page' => -1,
+            'post_status' => 'any'
+        ));
+        require __DIR__ . '/templates/tickets.php';
     }
     echo ob_get_clean();
     wp_die();
@@ -672,5 +678,17 @@ function steam_auth_remove_general_field() {
         wp_send_json_error('Поле не найдено');
     }
 }
+
+function steam_auth_save_settings() {
+    check_ajax_referer('steam_auth_nonce', 'nonce');
+
+    $current_user = wp_get_current_user();
+    $server_ips = sanitize_textarea_field($_POST['server_ips']);
+
+    update_user_meta($current_user->ID, 'steam_server_ips', $server_ips);
+
+    wp_send_json_success(array('message' => 'Настройки сохранены!'));
+}
+add_action('wp_ajax_save_settings', 'steam_auth_save_settings');
 
 ?>
