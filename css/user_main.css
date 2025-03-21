@@ -450,6 +450,34 @@
     margin-right: 10px;
 }
 
+/* Фильтры категорий */
+.category-filter {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.category-filter a {
+    padding: 6px 12px;
+    text-decoration: none;
+    color: #dcdcdc;
+    background: #2c3138;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.category-filter a:hover {
+    background: #f39c12;
+    color: #fff;
+}
+
+.category-filter a.active {
+    background: #f39c12;
+    color: #fff;
+    font-weight: 500;
+}
+
 /* Моды */
 .widget-mods .mods-table {
     width: 100%;
@@ -523,7 +551,6 @@
 }
 
 /* Адаптивность */
-/* Адаптивность */
 @media (max-width: 768px) {
     .sidebar {
         width: 100%;
@@ -568,41 +595,10 @@
         width: calc(100% - 20px);
         max-width: 300px;
     }
-
     .category-filter {
-        margin-bottom: 15px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        justify-content: center;
     }
-    
     .category-filter a {
-        padding: 6px 12px;
-        text-decoration: none;
-        color: #dcdcdc;
-        background: #2c3138;
-        border-radius: 5px;
-        transition: all 0.3s ease;
-    }
-    
-    .category-filter a:hover {
-        background: #f39c12;
-        color: #fff;
-    }
-    
-    .category-filter a.active {
-        background: #f39c12;
-        color: #fff;
-        font-weight: 500;
-    }
-    
-    /* Убираем дублирующиеся стили из медиа-запроса */
-    @media (max-width: 768px) {
-        .category-filter {
-            justify-content: center;
-        }
-        .category-filter a {
-            padding: 5px 10px; /* Уменьшаем для мобильных */
-        }
+        padding: 5px 10px; /* Уменьшаем для мобильных */
     }
 }
