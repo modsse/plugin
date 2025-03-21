@@ -846,6 +846,10 @@ function steam_auth_register_settings() {
         'sanitize_callback' => 'sanitize_text_field',
         'default' => ''
     ]);
+    register_setting('steam_auth_options', 'steam_auth_discord_guild_id', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => ''
+    ]);
     register_setting('steam_auth_options', 'bot_url_qery', [
         'sanitize_callback' => 'sanitize_text_field',
         'default' => ''
@@ -926,6 +930,7 @@ function steam_auth_register_settings() {
     // Добавляем секции и поля
     add_settings_section('steam_auth_general_section', 'Общие настройки', null, 'steam-auth');
     add_settings_field('steam_api_key', 'Steam API Key', 'steam_auth_field_callback', 'steam-auth', 'steam_auth_general_section', ['id' => 'steam_api_key', 'type' => 'text']);
+    add_settings_field('steam_auth_discord_guild_id', 'ID Discord сервера', 'steam_auth_field_callback', 'steam-auth', 'steam_auth_general_section', ['id' => 'steam_auth_discord_guild_id', 'type' => 'text']);
     add_settings_field('bot_url_qery', 'Bot url Для запросов', 'steam_auth_field_callback', 'steam-auth', 'steam_auth_general_section', ['id' => 'bot_url_qery', 'type' => 'text']);
     add_settings_field('steam_default_role', 'Роль по умолчанию', 'steam_auth_field_callback', 'steam-auth', 'steam_auth_general_section', ['id' => 'steam_default_role', 'type' => 'select', 'options' => wp_roles()->get_names()]);
     add_settings_field('steam_auth_debug', 'Режим отладки', 'steam_auth_field_callback', 'steam-auth', 'steam_auth_general_section', ['id' => 'steam_auth_debug', 'type' => 'checkbox']);
@@ -1064,7 +1069,16 @@ function steam_auth_sanitize_custom_templates($input) {
     return $output;
 }
 
-// steam-auth.php
+
+/**
+ * Генерирует страницу настроек для администратора.
+ *
+ * Функция отображает меню с закладками и контент под ними.
+ * Она также отображает уведомления и модальное окно для подтверждения.
+ *
+ * @since 1.0.0
+ */
+
 function steam_auth_settings_page() {
     $notification = '';
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
@@ -1270,6 +1284,17 @@ function get_steam_auth_logs_rest($request) {
     return array_values($logs);
 }
 
+/**
+ * Возвращает статистику по событиям Steam Auth за указанный период.
+ *
+ * @param WP_REST_Request $request
+ * @return array{
+ *     'registration' => int,
+ *     'authorization' => int,
+ *     'discord_link' => int,
+ *     'discord_unlink' => int
+ * }
+ */
 function get_steam_auth_stats($request) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
@@ -1340,6 +1365,18 @@ function get_steam_auth_stats($request) {
     return $stats;
 }
 
+/**
+ * Очищает таблицу логов Steam Auth.
+ *
+ * Эта функция проверяет существование таблицы логов и очищает её,
+ * используя команду TRUNCATE. Если таблица не найдена или происходит
+ * ошибка базы данных, возвращает WP_Error. В случае успешной очистки
+ * возвращает массив с сообщением об успешной операции.
+ *
+ * @param WP_REST_Request $request Запрос REST API.
+ * @return array|WP_Error Результат операции в виде массива или ошибки.
+ */
+
 function clear_steam_auth_logs($request) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
@@ -1363,6 +1400,17 @@ function clear_steam_auth_logs($request) {
 }
 
 add_action('init', 'restrict_wp_login_with_key', 5);
+/**
+ * Ограничивает доступ к странице wp-login.php.
+ *
+ * Эта функция проверяет, является ли текущий запрос к странице
+ * wp-login.php, и если да, то проверяет наличие параметра GET 'key'
+ * и сравнивает его со значением, сохранённым в настройках
+ * 'steam_auth_admin_key'. Если ключи совпадают, то сессия
+ * подтверждается, если нет, то редирект на главную страницу.
+ *
+ * @since 2.10.0
+ */
 function restrict_wp_login_with_key() {
     $login_page = 'auth';
     $secret_key = get_option('steam_auth_admin_key', 'secret123');
@@ -1535,7 +1583,19 @@ add_filter('login_message', '__return_empty_string');
 add_action('login_form', '__return_false');
 add_filter('login_display_language_dropdown', '__return_false');
 
-// Добавление сообщения
+
+/**
+ * Добавляет сообщение для пользователя
+ *
+ * @param int $user_id    ID пользователя, для которого добавляется сообщение. 0 - для всех пользователей.
+ * @param string $role    Роль, для которой добавляется сообщение. Если пусто, то для всех ролей.
+ * @param string $title   Заголовок сообщения.
+ * @param string $content Текст сообщения.
+ * @param bool   $send_discord    Отправлять сообщение в Discord?
+ * @param string $category  Категория сообщения (например, 'general', 'donate', 'welcome').
+ *
+ * @return string ID добавленного сообщения.
+ */
 function add_user_message($user_id, $role, $title, $content, $send_discord = true, $category = 'general') {
     $messages = get_option('steam_auth_messages', []);
     $message_id = uniqid();
@@ -1582,7 +1642,17 @@ function add_user_message($user_id, $role, $title, $content, $send_discord = tru
     return $message_id;
 }
 
-// Функция отправки сообщения в Discord
+
+/**
+ * Отправляет сообщение пользователю в Discord.
+ *
+ * @param int    $discord_id   ID пользователя Discord, которому отправляется сообщение.
+ * @param string $message_title Заголовок сообщения.
+ * @param string $message_content      Текст сообщения.
+ * @param array  $template_settings    Массив с настройками шаблона embed. Если пустой, то используются значения по умолчанию.
+ *
+ * @return bool Результат отправки сообщения.
+ */
 function send_discord_message($discord_id, $message_title, $message_content, $template_settings = null) {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
     if (empty($bot_token)) {
@@ -1701,6 +1771,15 @@ function send_discord_message($discord_id, $message_title, $message_content, $te
     return true;
 }
 
+/**
+ * Возвращает массив сообщений Steam Auth, отсортированный в порядке убывания даты создания,
+ * для указанного пользователя, отфильтрованных по категории (если указана).
+ *
+ * @param int    $user_id       ID пользователя, для которого нужно получить сообщения.
+ * @param string $category_filter  Фильтр по категории сообщений. Если пуст, то возвращаются все сообщения.
+ *
+ * @return array Массив сообщений, отсортированный в порядке убывания даты создания.
+ */
 function get_user_messages($user_id, $category_filter = '') {
     $all_messages = get_option('steam_auth_messages', []);
     $user = wp_get_current_user();
@@ -1789,7 +1868,20 @@ function delete_all_messages($user_id) {
     }
 }
 
-// Получение данных о членстве пользователя на сервере
+
+/**
+ * Получает информацию о членстве пользователя в Discord-сервере.
+ *
+ * Эта функция делает запрос к Discord API для получения данных о членстве 
+ * пользователя с указанным Discord ID на конкретном сервере.
+ *
+ * @param string $discord_id Discord ID пользователя, для которого необходимо 
+ * получить информацию о членстве.
+ * 
+ * @return array|false Возвращает массив с информацией о членстве пользователя в 
+ * Discord-сервере, либо false в случае ошибки или отсутствия токена.
+ */
+
 function fetch_discord_membership($discord_id) {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
     $guild_id = '958141724054671420'; // ID вашего сервера
@@ -1808,10 +1900,21 @@ function fetch_discord_membership($discord_id) {
     return json_decode(wp_remote_retrieve_body($response), true);
 }
 
-// Получение всех ролей сервера
+
+/**
+ * Получает информацию о ролях на Discord-сервере.
+ *
+ * Эта функция делает запрос к Discord API для получения данных о ролях на 
+ * конкретном сервере. Она кэширует ответ на 1 час, поэтому если вам 
+ * необходимо обновить список ролей, то вам нужно очистить кэш.
+ *
+ * @return array Массив, содержащий информацию о ролях на сервере, 
+ * где ключ - ID роли, а значение - массив с информацией о роли.
+ */
 function fetch_discord_roles() {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
-    $guild_id = '958141724054671420';
+    //$guild_id = '958141724054671420';
+    $guild_id = get_option('steam_auth_discord_guild_id', '');
     if (!$bot_token) return [];
 
     $roles = get_transient('steam_auth_discord_roles');

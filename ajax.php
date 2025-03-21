@@ -1,9 +1,20 @@
 <?php
+/**
+ * AJAX-обработчик для загрузки контента вкладок настроек Steam Auth.
+ *
+ * Эта функция обрабатывает AJAX-запросы для загрузки содержимого
+ * конкретной вкладки, указанной в параметре 'tab'. В зависимости от
+ * переданного значения 'tab', загружается соответствующий шаблон.
+ * Если параметр не указан, по умолчанию загружается вкладка 'general'.
+ *
+ * @since 1.0.0
+ */
 add_action('wp_ajax_steam_auth_load_tab', 'steam_auth_load_tab');
 function steam_auth_load_tab() {
     $tab = isset($_POST['tab']) ? $_POST['tab'] : 'general';
     $api_key = get_option('steam_api_key', '');
     $bot_url = get_option('bot_url_qery', '');
+    $guild_id = get_option('steam_auth_discord_guild_id', '958141724054671420');
     $default_role = get_option('steam_default_role', 'subscriber');
     $debug_mode = get_option('steam_auth_debug', false);
     $admin_key = get_option('steam_auth_admin_key', '');
@@ -41,6 +52,19 @@ function steam_auth_load_tab() {
     wp_die();
 }
 
+/**
+ * Отправляет сообщение Steam-юзеру(ам) с помощью Discord Webhook.
+ * 
+ * Функция обрабатывает AJAX-запрос, отправляемый из админки, и посылает
+ * сообщение, если отправитель - админ.
+ * 
+ * @since 1.0.0
+ * 
+ * @global array $default_templates - массив предопределенных шаблонов
+ * @global array $custom_templates - массив пользовательских шаблонов
+ * 
+ * @return void
+ */
 add_action('wp_ajax_steam_auth_send_message', 'steam_auth_send_message');
 function steam_auth_send_message() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
@@ -277,6 +301,7 @@ function steam_auth_save_settings() {
     if (isset($data['general'])) {
         update_option('steam_api_key', sanitize_text_field($data['steam_api_key']));
         update_option('bot_url_qery', sanitize_text_field($data['bot_url_qery']));
+        update_option('steam_auth_discord_guild_id', sanitize_text_field($data['steam_auth_discord_guild_id']));
         update_option('steam_default_role', sanitize_text_field($data['steam_default_role']));
         update_option('steam_auth_debug', isset($data['steam_auth_debug']) ? true : false);
         update_option('steam_auth_admin_key', sanitize_text_field($data['steam_auth_admin_key']));
@@ -325,6 +350,14 @@ function steam_auth_remove_field() {
 }
 
 add_action('wp_ajax_steam_auth_approve_unlink_discord', 'steam_auth_approve_unlink_discord');
+/**
+ * AJAX-обработчик одобрения запроса на отвязку Discord.
+ *
+ * Функция-обработчик AJAX-запроса, вызываемый при отправке формы одобрения
+ * запроса на отвязку Discord.
+ *
+ * @since 2.0.0
+ */
 function steam_auth_approve_unlink_discord() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) {

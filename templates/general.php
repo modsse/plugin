@@ -11,6 +11,10 @@
             <td><input type="text" name="bot_url_qery" id="bot_url_qery" value="<?php echo esc_attr($bot_url); ?>" class="regular-text"></td>
         </tr>
         <tr>
+            <th><label for="steam_auth_discord_guild_id">Discord Guild ID</label></th>
+            <td><input type="text" name="steam_auth_discord_guild_id" id="steam_auth_discord_guild_id" value="<?php echo esc_attr($guild_id); ?>" class="regular-text" pattern="[0-9]*" placeholder="Введите ID сервера Discord"></td>
+        </tr>
+        <tr>
             <th><label for="steam_default_role">Роль по умолчанию</label></th>
             <td>
                 <select name="steam_default_role" id="steam_default_role">
