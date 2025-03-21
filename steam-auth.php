@@ -1572,9 +1572,9 @@ function delete_user_message($user_id, $message_id) {
     $deleted = false;
 
     foreach ($all_messages as $message) {
-        if ($message['id'] === $message_id && $message['user_id'] == $user_id) {
+        if ((string)$message['id'] === (string)$message_id && (int)$message['user_id'] === (int)$user_id) {
             $deleted = true;
-            continue; // Пропускаем сообщение для удаления
+            continue;
         }
         $updated_messages[] = $message;
     }
@@ -1585,10 +1585,12 @@ function delete_user_message($user_id, $message_id) {
         if (get_option('steam_auth_debug', false)) {
             error_log("Steam Auth: Сообщение $message_id удалено для пользователя $user_id");
         }
+        wp_send_json_success(['message' => 'Сообщение удалено']);
     } else {
         if (get_option('steam_auth_debug', false)) {
             error_log("Steam Auth: Сообщение $message_id не найдено для пользователя $user_id");
         }
+        wp_send_json_error(['message' => 'Сообщение не найдено']);
     }
 }
 
@@ -1610,21 +1612,23 @@ function delete_all_read_messages($user_id) {
 
 function delete_all_messages($user_id) {
     $all_messages = get_option('steam_auth_messages', []);
-    $updated_messages = [];
+    $initial_count = count($all_messages);
+    $updated_messages = array_filter($all_messages, function($message) use ($user_id) {
+        return $message['user_id'] != $user_id;
+    });
+    $updated_count = count($updated_messages);
 
-    foreach ($all_messages as $message) {
-        $is_for_user = $message['user_id'] == $user_id;
-        if ($is_for_user) {
-            delete_user_meta($user_id, 'steam_message_read_' . $message['id']);
-            continue; // Пропускаем только сообщения этого пользователя
+    if ($initial_count > $updated_count) {
+        update_option('steam_auth_messages', array_values($updated_messages));
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Все сообщения пользователя $user_id удалены");
         }
-        $updated_messages[] = $message;
-    }
-
-    update_option('steam_auth_messages', $updated_messages);
-
-    if (get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Все сообщения пользователя $user_id удалены");
+        wp_send_json_success(['message' => 'Все сообщения удалены']);
+    } else {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Нет сообщений для удаления у пользователя $user_id");
+        }
+        wp_send_json_error(['message' => 'Нет сообщений для удаления']);
     }
 }
 
