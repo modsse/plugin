@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Инициализация событий вкладки
+    // js/profile.js (фрагмент с initTabEvents)
     function initTabEvents(tab) {
         const profileWidget = document.querySelector('.widget-profile');
         const editWidget = document.querySelector('.widget-edit');
@@ -134,6 +134,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 });
             }
+
+            const notificationsCheckbox = document.getElementById('discord_notifications');
+            if (notificationsCheckbox) {
+                notificationsCheckbox.addEventListener('change', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    const enabled = this.checked ? 1 : 0;
+
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=update_discord_notifications_profile&user_id=${userId}&enabled=${enabled}&nonce=${steamProfileData.nonce}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(`<p class="success">${data.data.message}</p>`);
+                        } else {
+                            showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                            notificationsCheckbox.checked = !enabled; // Откатываем изменение
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        showNotification('<p class="error">Произошла ошибка</p>', true);
+                        notificationsCheckbox.checked = !enabled; // Откатываем изменение
+                    });
+                });
+            }
         }
 
         if (tab === 'messages') {
@@ -176,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             });
-        
+
             document.querySelector('.delete-all-read')?.addEventListener('click', function(e) {
                 e.preventDefault();
                 if (confirm('Удалить все прочитанные сообщения?')) {
@@ -200,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             });
-        
+
             document.querySelector('.delete-all')?.addEventListener('click', function(e) {
                 e.preventDefault();
                 if (confirm('Удалить все сообщения?')) {
@@ -224,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             });
-            
+
             document.querySelectorAll('.pagination a').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -235,38 +263,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.history.pushState({ tab: 'messages', page, category }, '', this.href);
                 });
             });
+
+            // Обработчик для ссылок категорий
+            document.querySelectorAll('.category-filter a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const href = this.getAttribute('href');
+                    const url = new URL(href, window.location.origin);
+                    const category = url.searchParams.get('category') || '';
+                    loadTab('messages', false, 1, category); // Сбрасываем на первую страницу
+                    window.history.pushState({ tab: 'messages', page: 1, category }, '', href);
+                    // Обновляем активный класс
+                    document.querySelectorAll('.category-filter a').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
         }
     }
-
     // Инициализация событий для начального контента
     initTabEvents(steamProfileData.tab || 'profile');
-
-    // Обработка Discord уведомлений
-    const notificationsCheckbox = document.getElementById('discord_notifications');
-    if (notificationsCheckbox) {
-        notificationsCheckbox.addEventListener('change', function() {
-            const userId = this.getAttribute('data-user-id');
-            const enabled = this.checked ? 1 : 0;
-
-            fetch(steamProfileData.ajaxurl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `action=update_discord_notifications_profile&user_id=${userId}&enabled=${enabled}&nonce=${steamProfileData.nonce}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`<p class="success">${data.data.message}</p>`);
-                } else {
-                    showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
-                    notificationsCheckbox.checked = !enabled; // Откатываем изменение
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка:', error);
-                showNotification('<p class="error">Произошла ошибка</p>', true);
-                notificationsCheckbox.checked = !enabled; // Откатываем изменение
-            });
-        });
-    }
 });
