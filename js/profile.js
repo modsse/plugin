@@ -161,11 +161,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: `action=delete_message&message_id=${messageId}&nonce=${steamProfileData.nonce}`
                         })
-                        .then(() => loadTab('messages'));
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showNotification('<p class="success">Сообщение удалено</p>');
+                                loadTab('messages');
+                            } else {
+                                showNotification('<p class="error">Ошибка удаления сообщения</p>', true);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка:', error);
+                            showNotification('<p class="error">Произошла ошибка</p>', true);
+                        });
                     }
                 });
             });
-
+        
             document.querySelector('.delete-all-read')?.addEventListener('click', function(e) {
                 e.preventDefault();
                 if (confirm('Удалить все прочитанные сообщения?')) {
@@ -182,10 +194,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             showNotification('<p class="error">Ошибка удаления</p>', true);
                         }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        showNotification('<p class="error">Произошла ошибка</p>', true);
                     });
                 }
             });
-
+        
             document.querySelector('.delete-all')?.addEventListener('click', function(e) {
                 e.preventDefault();
                 if (confirm('Удалить все сообщения?')) {
@@ -202,6 +218,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             showNotification('<p class="error">Ошибка удаления</p>', true);
                         }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        showNotification('<p class="error">Произошла ошибка</p>', true);
                     });
                 }
             });
@@ -213,30 +233,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обработка Discord уведомлений
     const notificationsCheckbox = document.getElementById('discord_notifications');
-if (notificationsCheckbox) {
-    notificationsCheckbox.addEventListener('change', function() {
-        const userId = this.getAttribute('data-user-id');
-        const enabled = this.checked ? 1 : 0;
+    if (notificationsCheckbox) {
+        notificationsCheckbox.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            const enabled = this.checked ? 1 : 0;
 
-        fetch(steamProfileData.ajaxurl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=ajax_update_discord_notifications_profile&user_id=${userId}&enabled=${enabled}&nonce=${steamProfileData.nonce}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(`<p class="success">${data.data.message}</p>`);
-            } else {
-                showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+            fetch(steamProfileData.ajaxurl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=update_discord_notifications_profile&user_id=${userId}&enabled=${enabled}&nonce=${steamProfileData.nonce}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`<p class="success">${data.data.message}</p>`);
+                } else {
+                    showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                    notificationsCheckbox.checked = !enabled; // Откатываем изменение
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                showNotification('<p class="error">Произошла ошибка</p>', true);
                 notificationsCheckbox.checked = !enabled; // Откатываем изменение
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка:', error);
-            showNotification('<p class="error">Произошла ошибка</p>', true);
-            notificationsCheckbox.checked = !enabled; // Откатываем изменение
+            });
         });
-    });
-}
+    }
 });

@@ -1569,16 +1569,27 @@ function mark_message_read($user_id, $message_id) {
 function delete_user_message($user_id, $message_id) {
     $all_messages = get_option('steam_auth_messages', []);
     $updated_messages = [];
+    $deleted = false;
 
     foreach ($all_messages as $message) {
         if ($message['id'] === $message_id && $message['user_id'] == $user_id) {
-            continue; // Пропускаем сообщение, предназначенное только для этого пользователя
+            $deleted = true;
+            continue; // Пропускаем сообщение для удаления
         }
         $updated_messages[] = $message;
     }
 
-    update_option('steam_auth_messages', $updated_messages);
-    delete_user_meta($user_id, 'steam_message_read_' . $message_id);
+    if ($deleted) {
+        update_option('steam_auth_messages', $updated_messages);
+        delete_user_meta($user_id, 'steam_message_read_' . $message_id);
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Сообщение $message_id удалено для пользователя $user_id");
+        }
+    } else {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Сообщение $message_id не найдено для пользователя $user_id");
+        }
+    }
 }
 
 function delete_all_read_messages($user_id) {
