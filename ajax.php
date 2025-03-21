@@ -9,8 +9,8 @@
  *
  * @since 1.0.0
  */
-add_action('wp_ajax_steam_auth_load_tab', 'steam_auth_load_tab');
-function steam_auth_load_tab() {
+add_action('wp_ajax_steam_auth_admin_load_tab', 'steam_auth_admin_load_tab');
+function steam_auth_admin_load_tab() {
     $tab = isset($_POST['tab']) ? $_POST['tab'] : 'general';
     $api_key = get_option('steam_api_key', '');
     $bot_url = get_option('bot_url_qery', '');
@@ -651,7 +651,9 @@ function steam_auth_update_discord_notifications() {
         error_log("Steam Auth: Уведомления Discord для пользователя $user_id " . ($enabled ? 'включены' : 'отключены'));
     }
 
-    wp_send_json_success('Настройки обновлены');
+    wp_send_json_success([
+        'message' => "Уведомления " . ($enabled ? 'включены' : 'отключены') . "!",
+    ]);
 }
 
 add_action('wp_ajax_steam_auth_bulk_delete_messages', 'steam_auth_bulk_delete_messages');

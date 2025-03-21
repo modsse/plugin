@@ -271,7 +271,7 @@ function steam_profile_shortcode() {
     $discord_username = get_user_meta($user_id, 'discord_username', true);
     $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
     $tab = isset($_GET['tab']) ? $_GET['tab'] : 'profile';
-    $is_editing = ($tab === 'edit');
+    $is_editing = ($tab === 'profile' && isset($_GET['edit']) && $_GET['edit'] === 'true');
 
     $profile_settings = get_option('steam_profile_settings');
     if (empty($profile_settings)) {
@@ -305,76 +305,67 @@ function steam_profile_shortcode() {
         }
         return 'fas';
     }
+    // Начало сессии
+if (!session_id()) {
+    session_start();
+}
 
-    $transient_key = 'steam_profile_notification_' . $user_id;
-    $notification = get_transient($transient_key);
-    if ($notification === false) {
-        if (isset($_GET['discord_success'])) {
-            $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_success'])) . '</p>';
-            set_transient($transient_key, $notification, 30);
-        } elseif (isset($_GET['discord_unlink_success'])) {
-            $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_unlink_success'])) . '</p>';
-            set_transient($transient_key, $notification, 30);
-        } elseif (isset($_GET['discord_error'])) {
-            $notification = '<p class="error">' . esc_html(urldecode($_GET['discord_error'])) . '</p>';
-            set_transient($transient_key, $notification, 30);
-            add_user_message($user_id, '', 'Ошибка Discord', urldecode($_GET['discord_error']));
-        } else {
-            $notification = '';
-        }
-    }
-    if ($notification !== false) {
-        delete_transient($transient_key);
-    }
+// Уведомления
+$transient_key = 'steam_profile_notification_' . $user_id;
+$notification = isset($_SESSION['steam_profile_notification']) ? $_SESSION['steam_profile_notification'] : get_transient($transient_key);
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['steam_edit_profile_action']) && wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
-        $updated_data = [];
-        $errors = [];
+// Обработка GET-параметров для уведомлений
+if (isset($_GET['discord_success'])) {
+    $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_success'])) . '</p>';
+    $_SESSION['steam_profile_notification'] = $notification;
+} elseif (isset($_GET['discord_unlink_success'])) {
+    $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_unlink_success'])) . '</p>';
+    $_SESSION['steam_profile_notification'] = $notification;
+} elseif (isset($_GET['discord_error'])) {
+    $notification = '<p class="error">' . esc_html(urldecode($_GET['discord_error'])) . '</p>';
+    $_SESSION['steam_profile_notification'] = $notification;
+    add_user_message($user_id, '', 'Ошибка Discord', urldecode($_GET['discord_error']));
+}
 
-        foreach ($profile_settings['fields'] as $field => $settings) {
-            if ($settings['editable'] && isset($_POST[$field])) {
-                $value = sanitize_text_field($_POST[$field]);
-                if ($field === 'user_email' && !is_email($value)) {
-                    $errors[] = 'Некорректный email';
-                } else {
-                    $updated_data[$field] = $value;
-                }
-            }
-        }
+// После обработки формы редактирования
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['steam_edit_profile_action']) && wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
+    $updated_data = [];
+    $errors = [];
 
-        foreach ($profile_settings['custom_fields'] as $field => $settings) {
-            if (!empty($settings['visible'])) { // Проверяем, что visible установлен и true
-                $value = get_user_meta($user_id, $field, true);
-                $label = $settings['label'] ?? 'Без названия'; // Значение по умолчанию
-                $icon = $settings['icon'] ?? ''; // Пустая строка по умолчанию
-                $prefix = $icon ? get_icon_prefix($icon) : 'fas';
-                ?>
-                <div class="profile-field">
-                    <span class="field-icon"><i class="<?php echo esc_attr($prefix . ' ' . $icon); ?>"></i></span>
-                    <span class="field-label"><?php echo esc_html($label); ?>:</span>
-                    <span class="field-value"><?php echo esc_html($value) ?: 'Не указано'; ?></span>
-                </div>
-                <?php
-            }
-        }
-
-        if (empty($errors)) {
-            $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
-            if (is_wp_error($updated)) {
-                $notification = '<p class="error">Ошибка: ' . $updated->get_error_message() . '</p>';
+    foreach ($profile_settings['fields'] as $field => $settings) {
+        if ($settings['editable'] && isset($_POST[$field])) {
+            $value = sanitize_text_field($_POST[$field]);
+            if ($field === 'user_email' && !is_email($value)) {
+                $errors[] = 'Некорректный email';
             } else {
-                $notification = '<p class="success">Профиль обновлён!</p>';
-                $user_email = isset($updated_data['user_email']) ? $updated_data['user_email'] : $user_email;
-                $display_name = isset($updated_data['display_name']) ? $updated_data['display_name'] : $display_name;
+                $updated_data[$field] = $value;
             }
-            set_transient($transient_key, $notification, 30);
-            wp_redirect(remove_query_arg('edit'));
-            exit;
-        } else {
-            $notification = '<p class="error">' . implode('<br>', $errors) . '</p>';
-            set_transient($transient_key, $notification, 30);
         }
     }
+
+    if (empty($errors)) {
+        $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
+        if (is_wp_error($updated)) {
+            $notification = '<p class="error">Ошибка: ' . $updated->get_error_message() . '</p>';
+        } else {
+            $notification = '<p class="success">Профиль обновлён!</p>';
+            $user_email = isset($updated_data['user_email']) ? $updated_data['user_email'] : $user_email;
+            $display_name = isset($updated_data['display_name']) ? $updated_data['display_name'] : $display_name;
+        }
+        $_SESSION['steam_profile_notification'] = $notification;
+        wp_redirect(remove_query_arg('edit'));
+        exit;
+    } else {
+        $notification = '<p class="error">' . implode('<br>', $errors) . '</p>';
+        $_SESSION['steam_profile_notification'] = $notification;
+    }
+}
+
+// Очистка уведомления после отображения
+if ($notification && !isset($_GET['discord_success']) && !isset($_GET['discord_unlink_success']) && !isset($_GET['discord_error'])) {
+    unset($_SESSION['steam_profile_notification']);
+    delete_transient($transient_key);
+}
 
     if (isset($_GET['action']) && $_GET['action'] === 'mark_read' && isset($_GET['message_id'])) {
         $message_id = sanitize_text_field($_GET['message_id']);
@@ -403,251 +394,7 @@ function steam_profile_shortcode() {
     }
 
     ob_start();
-    ?>
-    <div class="steam-profile">
-        <h2>Ваш профиль</h2>
-        <div class="profile-tabs">
-            <a href="?tab=profile" class="tab-link <?php echo $tab === 'profile' ? 'active' : ''; ?>">Профиль</a>
-            <a href="?tab=messages" class="tab-link <?php echo $tab === 'messages' ? 'active' : ''; ?>">
-                Сообщения
-                <?php if ($unread_count > 0): ?>
-                    <span class="unread-count"><?php echo $unread_count; ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="?tab=mods" class="tab-link <?php echo $tab === 'mods' ? 'active' : ''; ?>">Моды</a>
-        </div>
-
-        <?php if ($tab === 'profile'): ?>
-            <?php if ($steam_avatar): ?>
-                <img src="<?php echo esc_url($steam_avatar); ?>" alt="Steam Avatar" class="avatar">
-            <?php endif; ?>
-
-            <div class="profile-content <?php echo $is_editing ? 'hidden' : 'visible'; ?>">
-                <div class="profile-details">
-                    <?php
-                    foreach ($profile_settings['fields'] as $field => $settings) {
-                        if ($settings['visible']) {
-                            $value = $field === 'display_name' ? $display_name :
-                                     ($field === 'steam_id' ? $steam_id :
-                                     ($field === 'user_email' ? $user_email :
-                                     ($field === 'steam_profile' ? '<a href="' . esc_url($steam_profile) . '" target="_blank">Перейти</a>' : '')));
-                            $prefix = get_icon_prefix($settings['icon']);
-                            ?>
-                            <div class="profile-field">
-                                <span class="field-icon"><i class="<?php echo esc_attr($prefix . ' ' . $settings['icon']); ?>"></i></span>
-                                <span class="field-label"><?php echo esc_html($settings['label']); ?>:</span>
-                                <span class="field-value"><?php echo $value ?: 'Не указано'; ?></span>
-                            </div>
-                            <?php
-                        }
-                    }
-                    foreach ($profile_settings['custom_fields'] as $field => $settings) {
-                        if (!empty($settings['editable'])) {
-                            $value = get_user_meta($user_id, $field, true);
-                            $label = $settings['label'] ?? 'Без названия';
-                            echo '<p><label for="' . esc_attr($field) . '">' . esc_html($label) . ':</label>';
-                            if (($settings['type'] ?? 'text') === 'textarea') {
-                                echo '<textarea name="' . esc_attr($field) . '" id="' . esc_attr($field) . '">' . esc_textarea($value) . '</textarea>';
-                            } else {
-                                $type = $settings['type'] ?? 'text';
-                                echo '<input type="' . esc_attr($type) . '" name="' . esc_attr($field) . '" id="' . esc_attr($field) . '" value="' . esc_attr($value) . '">';
-                            }
-                            echo '</p>';
-                        }
-                    }
-                    if ($discord_id && !isset($discord_unlink_requests[$user_id])) {
-                        $notifications_enabled = get_user_meta($user_id, 'discord_notifications_enabled', true) !== '0';
-                        ?>
-                        <div class="profile-field">
-                            <span class="field-icon"><i class="fab fa-discord"></i></span>
-                            <span class="field-label">Discord:</span>
-                            <span class="field-value"><?php echo esc_html($discord_username); ?> <a href="<?php echo wp_nonce_url(home_url('/discord-unlink'), 'discord_unlink_nonce'); ?>" class="steam-discord-unlink-btn">Отвязать</a></span>
-                        </div>
-                        <div class="profile-field">
-                            <span class="field-icon"><i class="fas fa-bell"></i></span>
-                            <span class="field-label">Уведомления Discord:</span>
-                            <span class="field-value">
-                                <input type="checkbox" id="discord_notifications" name="discord_notifications" <?php checked($notifications_enabled); ?> data-user-id="<?php echo esc_attr($user_id); ?>">
-                                <label for="discord_notifications">Включить уведомления</label>
-                            </span>
-                        </div>
-                        <?php
-                    } elseif (isset($discord_unlink_requests[$user_id])) {
-                        ?>
-                        <div class="profile-field">
-                            <span class="field-icon"><i class="fab fa-discord"></i></span>
-                            <span class="field-label">Discord:</span>
-                            <span class="field-value">Ожидает отвязки (<?php echo esc_html($discord_username); ?>)</span>
-                        </div>
-                        <?php
-                    } else {
-                        ?>
-                        <div class="profile-field">
-                            <span class="field-icon"><i class="fab fa-discord"></i></span>
-                            <span class="field-label">Discord:</span>
-                            <span class="field-value"><a href="<?php echo wp_nonce_url(home_url('/discord-link'), 'discord_link_nonce'); ?>" class="steam-discord-btn">Привязать Discord</a></span>
-                        </div>
-                        <?php
-                    }
-                    ?>
-                </div>
-                <p class="profile-actions">
-                    <a href="?tab=profile&edit=true" class="steam-edit-btn">Редактировать профиль</a>
-                    <a href="<?php echo wp_logout_url(home_url()); ?>" class="steam-logout-btn">Выйти</a>
-                </p>
-            </div>
-
-            <div class="steam-edit-profile <?php echo $is_editing ? 'visible' : 'hidden'; ?>">
-                <form method="post">
-                    <?php wp_nonce_field('steam_edit_profile_nonce', 'steam_edit_profile_action'); ?>
-                    <?php
-                    foreach ($profile_settings['fields'] as $field => $settings) {
-                        if ($settings['editable']) {
-                            $value = $field === 'user_email' ? $user_email : $display_name;
-                            $type = $field === 'user_email' ? 'email' : 'text';
-                            echo '<p><label for="' . $field . '">' . esc_html($settings['label']) . ':</label>';
-                            echo '<input type="' . $type . '" name="' . $field . '" id="' . $field . '" value="' . esc_attr($value) . '" required></p>';
-                        }
-                    }
-                    foreach ($profile_settings['custom_fields'] as $field => $settings) {
-                        if ($settings['editable']) {
-                            $value = get_user_meta($user_id, $field, true);
-                            echo '<p><label for="' . $field . '">' . esc_html($settings['label']) . ':</label>';
-                            if ($settings['type'] === 'textarea') {
-                                echo '<textarea name="' . $field . '" id="' . $field . '">' . esc_textarea($value) . '</textarea>';
-                            } else {
-                                echo '<input type="' . $settings['type'] . '" name="' . $field . '" id="' . $field . '" value="' . esc_attr($value) . '">';
-                            }
-                            echo '</p>';
-                        }
-                    }
-                    ?>
-                    <p>
-                        <input type="submit" value="Сохранить изменения" class="steam-save-btn">
-                        <a href="?tab=profile" class="steam-cancel-btn">Отмена</a>
-                    </p>
-                </form>
-            </div>
-        <?php elseif ($tab === 'messages'): ?>
-            <div class="messages-tab">
-                <h3>Сообщения</h3>
-                <div class="message-filter">
-                    <label for="message-category">Фильтр по категории: </label>
-                    <select id="message-category" onchange="location.href='?tab=messages&category='+this.value;">
-                        <option value="">Все категории</option>
-                        <option value="general" <?php echo (isset($_GET['category']) && $_GET['category'] === 'general') ? 'selected' : ''; ?>>Общее</option>
-                        <option value="news" <?php echo (isset($_GET['category']) && $_GET['category'] === 'news') ? 'selected' : ''; ?>>Новости</option>
-                        <option value="alert" <?php echo (isset($_GET['category']) && $_GET['category'] === 'alert') ? 'selected' : ''; ?>>Оповещения</option>
-                        <option value="personal" <?php echo (isset($_GET['category']) && $_GET['category'] === 'personal') ? 'selected' : ''; ?>>Личные</option>
-                    </select>
-                </div>
-                <?php
-                $category_filter = isset($_GET['category']) ? sanitize_text_field($_GET['category']) : '';
-                $messages = get_user_messages($user_id, $category_filter);
-                if (empty($messages)) {
-                    echo '<p>Нет сообщений.</p>';
-                } else {
-                    ?>
-                    <p class="message-actions">
-                        <a href="?tab=messages&action=delete_all_read" class="delete-all-read" onclick="return confirm('Удалить все прочитанные сообщения?');">Удалить все прочитанные</a>
-                        <a href="?tab=messages&action=delete_all" class="delete-all" onclick="return confirm('Удалить все сообщения?');">Удалить все сообщения</a>
-                    </p>
-                    <ul class="message-list">
-                    <?php
-                    foreach ($messages as $message) {
-                        $read_class = $message['is_read'] ? 'read' : 'unread';
-                        $category_class = 'category-' . esc_attr($message['category']);
-                        ?>
-                        <li class="message-item <?php echo $read_class; ?> <?php echo $category_class; ?>">
-                            <div class="message-header">
-                                <span class="message-title"><?php echo esc_html($message['title']); ?> (<?php echo esc_html($message['category']); ?>)</span>
-                                <span class="message-date"><?php echo esc_html($message['date']); ?></span>
-                            </div>
-                            <div class="message-content"><?php echo nl2br(esc_html($message['content'])); ?></div>
-                            <div class="message-actions">
-                                <?php if (!$message['is_read']): ?>
-                                    <a href="?tab=messages&action=mark_read&message_id=<?php echo esc_attr($message['id']); ?>" class="mark-read">Пометить прочитанным</a>
-                                <?php else: ?>
-                                    <a href="?tab=messages&action=delete&message_id=<?php echo esc_attr($message['id']); ?>" class="delete-message" onclick="return confirm('Удалить это сообщение?');">Удалить</a>
-                                <?php endif; ?>
-                            </div>
-                        </li>
-                        <?php
-                    }
-                    echo '</ul>';
-                }
-                ?>
-            </div>
-        <?php elseif ($tab === 'mods'): ?>
-            <div class="mods-tab">
-        <h3>Ваши моды</h3>
-        <?php
-        if ($discord_id) {
-            $member_data = fetch_discord_membership($discord_id);
-            $mods_config = get_option('steam_auth_mods_config', []);
-            $selected_mod_roles = isset($mods_config['selected_roles']) ? $mods_config['selected_roles'] : [];
-            $roles = fetch_discord_roles();
-            if ($member_data && !empty($member_data['roles'])) {
-                $has_mods = false;
-                ?>
-                <table class="mods-table">
-                    <thead>
-                        <tr>
-                            <th>Название мода</th>
-                            <th>Версия</th>
-                            <th>Документация</th> <!-- Новая колонка -->
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                        foreach ($member_data['roles'] as $role_id) :
-                            if (isset($selected_mod_roles[$role_id]) && isset($roles[$role_id])) : 
-                                $has_mods = true;
-                                $mod_config = $mods_config[$role_id] ?? [];
-                                $doc_url = $mod_config['documentation_url'] ?? '';
-                                ?>
-                                <tr>
-                                    <td>
-                                        <?php if ($mod_config['image']) : ?>
-                                            <img src="<?php echo esc_url($mod_config['image']); ?>" 
-                                                 alt="<?php echo esc_attr($roles[$role_id]['name']); ?>" 
-                                                 width="50" style="vertical-align: middle; margin-right: 10px;">
-                                        <?php endif; ?>
-                                        <?php echo esc_html($roles[$role_id]['name']); ?>
-                                    </td>
-                                    <td><?php echo esc_html($mod_config['version'] ?? 'N/A'); ?></td>
-                                    <td>
-                                        <?php if ($doc_url) : ?>
-                                            <a href="<?php echo esc_url($doc_url); ?>" target="_blank" class="steam-documentation-btn">Документация</a>
-                                        <?php else : ?>
-                                            Нет документации
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endif; 
-                        endforeach; 
-                        ?>
-                    </tbody>
-                </table>
-                <?php
-                if (!$has_mods) {
-                    echo '<p>У вас нет доступных модов.</p>';
-                }
-            } else {
-                echo '<p>Вы не состоите на сервере Discord или у вас нет ролей.</p>';
-            }
-        } else {
-            echo '<p>Привяжите Discord, чтобы увидеть свои моды.</p>';
-        }
-        ?>
-    </div>
-        <?php else: ?>
-            <p>Неизвестная вкладка: <?php echo esc_html($tab); ?></p>
-        <?php endif; ?>
-
-        <div id="steam-profile-notification" class="notification" style="display: none;"></div>
-    </div>
-    <?php
+    require_once plugin_dir_path(__FILE__) . 'user_profile.php';
     $output = ob_get_clean();
 
     if (get_option('steam_auth_debug', false)) {
@@ -659,7 +406,8 @@ function steam_profile_shortcode() {
         'notification' => $notification,
         'debug' => get_option('steam_auth_debug', false) ? true : false,
         'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('steam_profile_nonce')
+        'nonce' => wp_create_nonce('steam_profile_nonce'),
+        'tab' => $tab
     ]);
 
     return $output;
@@ -812,9 +560,8 @@ function handle_discord_unlink() {
     update_option('steam_auth_discord_unlink_requests', $discord_unlink_requests);
 
     $steam_id = get_user_meta($user_id, 'steam_id', true);
-    log_steam_action($steam_id, 'discord_unlink_request', $discord_id, $discord_username); // Изменено на request
+    log_steam_action($steam_id, 'discord_unlink_request', $discord_id, $discord_username);
 
-    // Уведомление пользователю в Discord
     $template_settings = [
         'color' => '16776960', // Warning (жёлтый)
         'fields' => [
@@ -828,9 +575,15 @@ function handle_discord_unlink() {
     ];
     send_discord_message($discord_id, 'Запрос на отвязку Discord', 'Ваш запрос на отвязку Discord отправлен администратору. Ожидайте подтверждения.', $template_settings);
 
-    wp_redirect(home_url('/user?discord_unlink_success=' . urlencode('Запрос на отвязку Discord отправлен')));
+    if (!session_id()) {
+        session_start();
+    }
+    $_SESSION['steam_profile_notification'] = '<p class="success">Запрос на отвязку Discord отправлен</p>';
+    wp_redirect(home_url('/user'));
     exit;
 }
+
+
 
 add_action('admin_menu', 'steam_auth_settings_menu');
 function steam_auth_settings_menu() {
@@ -2005,5 +1758,159 @@ function get_steam_auth_logs($limit = 50) {
     }
 
     return $results;
+}
+
+// AJAX-обработчики для вкладок
+// AJAX-обработчики для вкладок
+add_action('wp_ajax_load_tab', 'steam_auth_load_tab');
+function steam_auth_load_tab() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+
+    // Получаем данные пользователя
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        wp_die('Ошибка: пользователь не авторизован');
+    }
+
+    $user = get_userdata($user_id);
+    $steam_id = get_user_meta($user_id, 'steam_id', true);
+    $steam_profile = get_user_meta($user_id, 'steam_profile', true);
+    $steam_avatar = get_user_meta($user_id, 'steam_avatar', true);
+    $user_email = $user->user_email;
+    $display_name = $user->display_name;
+    $discord_id = get_user_meta($user_id, 'discord_id', true);
+    $discord_username = get_user_meta($user_id, 'discord_username', true);
+    $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
+    
+    // Настройки профиля
+    $profile_settings = get_option('steam_profile_settings');
+    if (empty($profile_settings)) {
+        $profile_settings = [
+            'fields' => [
+                'display_name' => ['visible' => true, 'editable' => false, 'label' => 'Имя', 'icon' => 'fa-user'],
+                'steam_id' => ['visible' => true, 'editable' => false, 'label' => 'SteamID', 'icon' => 'fa-steam'],
+                'user_email' => ['visible' => true, 'editable' => true, 'label' => 'Email', 'icon' => 'fa-envelope'],
+                'steam_profile' => ['visible' => true, 'editable' => false, 'label' => 'Steam Profile', 'icon' => 'fa-link'],
+            ],
+            'custom_fields' => []
+        ];
+    }
+
+    // Сообщения
+    $messages = get_user_messages($user_id);
+    $unread_count = count(array_filter($messages, function($message) {
+        return !$message['is_read'];
+    }));
+
+    // Функция для префикса иконок (копируем из шорткода)
+    function get_icon_prefix($icon_name) {
+        static $icons = null;
+        if ($icons === null) {
+            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . 'icons.json');
+            $icons = $icons_json ? json_decode($icons_json, true) : [];
+        }
+        $icon_key = str_replace('fa-', '', $icon_name);
+        if (isset($icons[$icon_key])) {
+            $style = $icons[$icon_key]['styles'][0];
+            return $style === 'brands' ? 'fab' : 'fas';
+        }
+        return 'fas';
+    }
+
+    // Определяем вкладку и режим редактирования
+    $tab = isset($_POST['tab']) ? sanitize_text_field($_POST['tab']) : 'profile';
+    $edit = isset($_POST['edit']) && $_POST['edit'] === 'true';
+    $_GET['edit'] = $edit ? 'true' : null;
+
+    // Проверяем существование файла вкладки
+    $tab_file = plugin_dir_path(__FILE__) . "tabs/{$tab}-tab.php";
+    if (!file_exists($tab_file)) {
+        wp_die("Ошибка: файл вкладки {$tab} не найден");
+    }
+
+    // Загружаем содержимое вкладки
+    ob_start();
+    include $tab_file;
+    $content = ob_get_clean();
+
+    echo $content;
+    wp_die();
+}
+
+add_action('wp_ajax_save_profile', 'steam_auth_save_profile');
+function steam_auth_save_profile() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+
+    $user_id = get_current_user_id();
+    $profile_settings = get_option('steam_profile_settings');
+    $updated_data = [];
+    $errors = [];
+
+    if (!isset($_POST['steam_edit_profile_action']) || !wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
+        wp_send_json_error('Ошибка безопасности');
+    }
+
+    foreach ($profile_settings['fields'] as $field => $settings) {
+        if ($settings['editable'] && isset($_POST[$field])) {
+            $value = sanitize_text_field($_POST[$field]);
+            if ($field === 'user_email' && !is_email($value)) {
+                $errors[] = 'Некорректный email';
+            } else {
+                $updated_data[$field] = $value;
+            }
+        }
+    }
+
+    foreach ($profile_settings['custom_fields'] as $field => $settings) {
+        if ($settings['editable'] && isset($_POST[$field])) {
+            $value = $settings['type'] === 'textarea' ? sanitize_textarea_field($_POST[$field]) : sanitize_text_field($_POST[$field]);
+            update_user_meta($user_id, $field, $value);
+        }
+    }
+
+    if (empty($errors)) {
+        $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
+        if (is_wp_error($updated)) {
+            wp_send_json_error($updated->get_error_message());
+        } else {
+            wp_send_json_success();
+        }
+    } else {
+        wp_send_json_error(implode('<br>', $errors));
+    }
+}
+
+add_action('wp_ajax_mark_read', 'steam_auth_mark_read');
+function steam_auth_mark_read() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+    $user_id = get_current_user_id();
+    $message_id = sanitize_text_field($_POST['message_id']);
+    mark_message_read($user_id, $message_id);
+    wp_send_json_success();
+}
+
+add_action('wp_ajax_delete_message', 'steam_auth_delete_message');
+function steam_auth_delete_message() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+    $user_id = get_current_user_id();
+    $message_id = sanitize_text_field($_POST['message_id']);
+    delete_user_message($user_id, $message_id);
+    wp_send_json_success();
+}
+
+add_action('wp_ajax_delete_all_read', 'steam_auth_delete_all_read');
+function steam_auth_delete_all_read() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+    $user_id = get_current_user_id();
+    delete_all_read_messages($user_id);
+    wp_send_json_success();
+}
+
+add_action('wp_ajax_delete_all', 'steam_auth_delete_all');
+function steam_auth_delete_all() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+    $user_id = get_current_user_id();
+    delete_all_messages($user_id);
+    wp_send_json_success();
 }
 ?>

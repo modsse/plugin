@@ -4,145 +4,222 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Profile.js loaded');
     }
 
-    const profileContent = document.querySelector('.profile-content');
-    const editForm = document.querySelector('.steam-edit-profile');
+    const sidebarToggle = document.querySelector('.sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const dashboardContent = document.getElementById('dashboard-content');
+    const tabLinks = document.querySelectorAll('.tab-link');
     const notification = document.getElementById('steam-profile-notification');
 
-    if (!profileContent || !editForm) {
-        if (steamProfileData) {
-            console.error('Не найдены элементы .profile-content или .steam-edit-profile');
+    // Сайдбар
+    if (sidebarToggle && sidebar) {
+        sidebar.style.transition = 'none';
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            sidebar.classList.add('collapsed');
         }
-        return;
+        setTimeout(() => {
+            sidebar.style.transition = 'width 0.3s ease';
+        }, 0);
+
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        });
     }
 
-    if (!notification) {
-        if (steamProfileData) {
-            console.error('Не найдено уведомление #steam-profile-notification');
-        }
-        return;
-    }
-
-    function toggleEdit(isEdit) {
-        if (isEdit) {
-            profileContent.classList.remove('visible');
-            profileContent.classList.add('hidden');
-            editForm.classList.remove('hidden');
-            editForm.classList.add('visible');
-        } else {
-            editForm.classList.remove('visible');
-            editForm.classList.add('hidden');
-            profileContent.classList.remove('hidden');
-            profileContent.classList.add('visible');
-        }
-    }
-
-    document.querySelector('.steam-edit-btn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        toggleEdit(true);
-        window.history.pushState({}, '', '?edit=true');
-    });
-
-    document.querySelector('.steam-cancel-btn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        toggleEdit(false);
-        window.history.pushState({}, '', window.location.pathname);
-    });
-
-    if (steamProfileData && steamProfileData.notification) {
-        if (steamProfileData.debug) {
-            console.log('Уведомление:', steamProfileData.notification);
-        }
-        notification.innerHTML = steamProfileData.notification;
-        notification.classList.add(steamProfileData.notification.includes('Ошибка') ? 'error' : 'success');
-        notification.style.display = 'block';
+    // Уведомления
+    function showNotification(message, isError = false) {
+        notification.innerHTML = message;
+        notification.classList.remove('visible', 'success', 'error');
+        notification.classList.add(isError ? 'error' : 'success');
         notification.classList.add('visible');
-
         setTimeout(() => {
             notification.classList.remove('visible');
-            notification.classList.add('fade-out');
-            setTimeout(() => {
-                notification.style.display = 'none';
-                notification.classList.remove('fade-out');
-            }, 500);
         }, 3000);
-    } else if (steamProfileData && steamProfileData.debug) {
-        console.log('Нет уведомления в steamProfileData:', steamProfileData);
     }
 
-    // Обработка чекбокса уведомлений Discord
+    // Начальное уведомление
+    if (steamProfileData && steamProfileData.notification) {
+        showNotification(steamProfileData.notification, steamProfileData.notification.includes('Ошибка'));
+    }
+
+    // AJAX для вкладок
+    if (tabLinks && dashboardContent) {
+        tabLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tab = this.getAttribute('data-tab');
+                loadTab(tab);
+                tabLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                window.history.pushState({ tab }, '', `?tab=${tab}`);
+            });
+        });
+    }
+
+    // Функция загрузки вкладки
+    function loadTab(tab, edit = false) {
+        fetch(steamProfileData.ajaxurl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=load_tab&tab=${tab}&edit=${edit}&nonce=${steamProfileData.nonce}`
+        })
+        .then(response => response.text())
+        .then(html => {
+            dashboardContent.innerHTML = html;
+            initTabEvents(tab);
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки вкладки:', error);
+            showNotification('<p class="error">Ошибка загрузки вкладки</p>', true);
+        });
+    }
+
+    // Инициализация событий вкладки
+    function initTabEvents(tab) {
+        const profileWidget = document.querySelector('.widget-profile');
+        const editWidget = document.querySelector('.widget-edit');
+
+        if (tab === 'profile' && profileWidget && editWidget) {
+            function toggleEdit(isEdit) {
+                if (isEdit) {
+                    profileWidget.classList.remove('visible');
+                    profileWidget.classList.add('hidden');
+                    editWidget.classList.remove('hidden');
+                    editWidget.classList.add('visible');
+                } else {
+                    editWidget.classList.remove('visible');
+                    editWidget.classList.add('hidden');
+                    profileWidget.classList.remove('hidden');
+                    profileWidget.classList.add('visible');
+                }
+            }
+
+            document.querySelector('.steam-edit-btn')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadTab('profile', true);
+                window.history.pushState({ tab: 'profile', edit: true }, '', '?tab=profile&edit=true');
+            });
+
+            document.querySelector('.steam-cancel-btn')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadTab('profile', false);
+                window.history.pushState({ tab: 'profile' }, '', '?tab=profile');
+            });
+
+            const editForm = document.getElementById('profile-edit-form');
+            if (editForm) {
+                editForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    formData.append('action', 'save_profile');
+                    formData.append('nonce', steamProfileData.nonce);
+
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('<p class="success">Профиль обновлён!</p>');
+                            loadTab('profile', false);
+                            window.history.pushState({ tab: 'profile' }, '', '?tab=profile');
+                        } else {
+                            showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                        }
+                    })
+                    .catch(error => {
+                        showNotification('<p class="error">Ошибка сохранения</p>', true);
+                    });
+                });
+            }
+        }
+
+        if (tab === 'messages') {
+            document.querySelectorAll('.mark-read').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const messageId = this.getAttribute('data-message-id');
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=mark_read&message_id=${messageId}&nonce=${steamProfileData.nonce}`
+                    })
+                    .then(() => loadTab('messages'));
+                });
+            });
+
+            document.querySelectorAll('.delete-message').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (confirm('Удалить это сообщение?')) {
+                        const messageId = this.getAttribute('data-message-id');
+                        fetch(steamProfileData.ajaxurl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `action=delete_message&message_id=${messageId}&nonce=${steamProfileData.nonce}`
+                        })
+                        .then(() => loadTab('messages'));
+                    }
+                });
+            });
+
+            document.querySelector('.delete-all-read')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Удалить все прочитанные сообщения?')) {
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=delete_all_read&nonce=${steamProfileData.nonce}`
+                    })
+                    .then(() => loadTab('messages'));
+                }
+            });
+
+            document.querySelector('.delete-all')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Удалить все сообщения?')) {
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=delete_all&nonce=${steamProfileData.nonce}`
+                    })
+                    .then(() => loadTab('messages'));
+                }
+            });
+        }
+    }
+
+    // Инициализация событий для начального контента
+    initTabEvents(steamProfileData.tab || 'profile');
+
+    // Обработка Discord уведомлений
     const notificationsCheckbox = document.getElementById('discord_notifications');
     if (notificationsCheckbox) {
         notificationsCheckbox.addEventListener('change', function() {
             const userId = this.getAttribute('data-user-id');
             const enabled = this.checked ? 1 : 0;
 
-            if (steamProfileData.debug) {
-                console.log('Updating Discord notifications', { userId, enabled });
-            }
-
             fetch(steamProfileData.ajaxurl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `action=update_discord_notifications&user_id=${userId}&enabled=${enabled}&nonce=${steamProfileData.nonce}`
             })
             .then(response => response.json())
             .then(data => {
-                if (steamProfileData.debug) {
-                    console.log('AJAX response', data);
-                }
                 if (data.success) {
-                    notification.innerHTML = `<p class="success">Уведомления ${enabled ? 'включены' : 'отключены'}!</p>`;
-                    notification.classList.add('success');
-                    notification.style.display = 'block';
-                    notification.classList.add('visible');
-                    setTimeout(() => {
-                        notification.classList.remove('visible');
-                        notification.classList.add('fade-out');
-                        setTimeout(() => {
-                            notification.style.display = 'none';
-                            notification.classList.remove('fade-out');
-                        }, 500);
-                    }, 3000);
+                    showNotification(`<p class="success">${data.data.message}</p>`);
                 } else {
-                    notification.innerHTML = `<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`;
-                    notification.classList.add('error');
-                    notification.style.display = 'block';
-                    notification.classList.add('visible');
-                    notificationsCheckbox.checked = !enabled; // Откатываем изменение
-                    setTimeout(() => {
-                        notification.classList.remove('visible');
-                        notification.classList.add('fade-out');
-                        setTimeout(() => {
-                            notification.style.display = 'none';
-                            notification.classList.remove('fade-out');
-                        }, 500);
-                    }, 3000);
+                    showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                    notificationsCheckbox.checked = !enabled;
                 }
             })
             .catch(error => {
-                if (steamProfileData.debug) {
-                    console.error('AJAX error', error);
-                }
-                notification.innerHTML = '<p class="error">Произошла ошибка при сохранении настроек</p>';
-                notification.classList.add('error');
-                notification.style.display = 'block';
-                notification.classList.add('visible');
-                notificationsCheckbox.checked = !enabled; // Откатываем изменение
-                setTimeout(() => {
-                    notification.classList.remove('visible');
-                    notification.classList.add('fade-out');
-                    setTimeout(() => {
-                        notification.style.display = 'none';
-                        notification.classList.remove('fade-out');
-                    }, 500);
-                }, 3000);
+                showNotification('<p class="error">Произошла ошибка</p>', true);
+                notificationsCheckbox.checked = !enabled;
             });
         });
-    }
-
-    if (steamProfileData && steamProfileData.debug) {
-        console.log('Debug mode enabled. Notification value:', steamProfileData.notification);
     }
 });

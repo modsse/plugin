@@ -452,7 +452,7 @@ jQuery(document).ready(function($) {
                 if (steamAuthAjax.debug) console.log('Ответ сервера:', response);
                 if (response.success) {
                     showNotification(response.data.message, 'success');
-                    $.post(steamAuthAjax.ajaxurl, { action: 'steam_auth_load_tab', tab: 'profile' }, function(response) {
+                    $.post(steamAuthAjax.ajaxurl, { action: 'steam_auth_admin_load_tab', tab: 'profile' }, function(response) {
                         $('#tab-content').html(response);
                         loadIcons(function() {
                             initIconSelect();
@@ -821,7 +821,7 @@ jQuery(document).ready(function($) {
     });
 
     $(document).ajaxSuccess(function(event, xhr, settings) {
-        if (settings.data && settings.data.indexOf('action=steam_auth_load_tab') !== -1) {
+        if (settings.data && settings.data.indexOf('action=steam_auth_admin_load_tab') !== -1) {
             const tab = settings.data.match(/tab=([^&]+)/)[1];
             $(document).trigger('steam_auth_tab_loaded', [tab]);
         }
@@ -881,7 +881,7 @@ jQuery(document).ready(function($) {
     function loadTab(tab) {
         if (steamAuthAjax.debug) console.log('Загрузка вкладки:', tab);
         $.post(steamAuthAjax.ajaxurl, {
-            action: 'steam_auth_load_tab',
+            action: 'steam_auth_admin_load_tab',
             tab: tab,
             nonce: steamAuthAjax.nonce
         }, function(response) {
