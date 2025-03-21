@@ -35,6 +35,9 @@ defined('ABSPATH') or die('No direct access allowed');
     <div class="dashboard-content" id="dashboard-content">
         <!-- Контент будет загружаться через AJAX -->
         <?php
+        $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'profile';
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $category_filter = isset($_GET['category']) ? sanitize_text_field($_GET['category']) : '';
         // Загружаем начальный контент на сервере
         if ($tab === 'profile') {
             include plugin_dir_path(__FILE__) . 'tabs/profile-tab.php';

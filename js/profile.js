@@ -57,13 +57,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Функция загрузки вкладки
-    function loadTab(tab, edit = false) {
+    function loadTab(tab, edit = false, page = 1, category = '') {
+        const body = `action=load_tab&tab=${tab}&edit=${edit}&page=${page}&category=${encodeURIComponent(category)}&nonce=${steamProfileData.nonce}`;
         fetch(steamProfileData.ajaxurl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=load_tab&tab=${tab}&edit=${edit}&nonce=${steamProfileData.nonce}`
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
         })
         .then(response => response.text())
         .then(html => {
@@ -224,6 +223,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         showNotification('<p class="error">Произошла ошибка</p>', true);
                     });
                 }
+            });
+            
+            document.querySelectorAll('.pagination a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = new URL(this.href);
+                    const page = url.searchParams.get('page') || 1;
+                    const category = url.searchParams.get('category') || '';
+                    loadTab('messages', false, page, category);
+                    window.history.pushState({ tab: 'messages', page, category }, '', this.href);
+                });
             });
         }
     }

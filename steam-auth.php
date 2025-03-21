@@ -287,10 +287,12 @@ function steam_profile_shortcode() {
         update_option('steam_profile_settings', $profile_settings);
     }
 
-    $messages = get_user_messages($user_id);
-    $unread_count = count(array_filter($messages, function($message) {
-        return !$message['is_read'];
-    }));
+    // $messages = get_user_messages($user_id);
+    // $unread_count = count(array_filter($messages, function($message) {
+    //     return !$message['is_read'];
+    // }));
+    $unread_count = steam_auth_get_unread_messages_count($user_id);
+    
 
     function get_icon_prefix($icon_name) {
         static $icons = null;
@@ -1533,32 +1535,56 @@ function send_discord_message($discord_id, $message_title, $message_content, $te
  *
  * @return array Массив сообщений, отсортированный в порядке убывания даты создания.
  */
-function get_user_messages($user_id, $category_filter = '') {
+function get_user_messages($user_id, $category_filter = '', $per_page = 10, $page = 1) {
     $all_messages = get_option('steam_auth_messages', []);
     $user = wp_get_current_user();
     $user_role = !empty($user->roles) ? $user->roles[0] : 'subscriber';
     $messages = [];
 
     foreach ($all_messages as $message) {
-        $is_for_user = ($message['user_id'] == $user_id) || 
-                       ($message['user_id'] == 0 && (empty($message['role']) || $message['role'] == $user_role));
-        if ($is_for_user && (empty($category_filter) || $message['category'] === $category_filter)) {
-            $message['is_read'] = get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) == '1';
+        $is_for_user = ((int)$message['user_id'] === (int)$user_id) || 
+                       ((int)$message['user_id'] === 0 && (empty($message['role']) || $message['role'] === $user_role));
+        $is_deleted = get_user_meta($user_id, 'steam_message_deleted_' . $message['id'], true) === '1';
+
+        if ($is_for_user && !$is_deleted && (empty($category_filter) || $message['category'] === $category_filter)) {
+            $message['is_read'] = get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) === '1';
             $messages[] = $message;
         }
     }
 
-    return array_reverse($messages);
+    $messages = array_reverse($messages);
+    $total = count($messages);
+    $offset = ($page - 1) * $per_page;
+    $paginated_messages = array_slice($messages, $offset, $per_page);
+
+    return [
+        'messages' => $paginated_messages,
+        'total' => $total,
+        'pages' => ceil($total / $per_page)
+    ];
 }
 
 function steam_auth_get_unread_messages_count($user_id) {
     if (!is_user_logged_in() || !$user_id) {
         return 0;
     }
-    $messages = get_user_messages($user_id);
-    return count(array_filter($messages, function($message) {
-        return !$message['is_read'];
-    }));
+    $all_messages = get_option('steam_auth_messages', []);
+    $user = wp_get_current_user();
+    $user_role = !empty($user->roles) ? $user->roles[0] : 'subscriber';
+    $unread_count = 0;
+
+    foreach ($all_messages as $message) {
+        $is_for_user = ((int)$message['user_id'] === (int)$user_id) || 
+                       ((int)$message['user_id'] === 0 && (empty($message['role']) || $message['role'] === $user_role));
+        $is_deleted = get_user_meta($user_id, 'steam_message_deleted_' . $message['id'], true) === '1';
+        $is_read = get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) === '1';
+
+        if ($is_for_user && !$is_deleted && !$is_read) {
+            $unread_count++;
+        }
+    }
+
+    return $unread_count;
 }
 
 // Пометка сообщения как прочитанного
@@ -1572,18 +1598,25 @@ function delete_user_message($user_id, $message_id) {
     $deleted = false;
 
     foreach ($all_messages as $message) {
-        if ((string)$message['id'] === (string)$message_id && (int)$message['user_id'] === (int)$user_id) {
-            $deleted = true;
-            continue;
+        if ((string)$message['id'] === (string)$message_id) {
+            if ((int)$message['user_id'] === (int)$user_id) {
+                // Удаляем личное сообщение полностью
+                delete_user_meta($user_id, 'steam_message_read_' . $message_id);
+                $deleted = true;
+                continue;
+            } elseif ((int)$message['user_id'] === 0) {
+                // Помечаем общее сообщение как удалённое для пользователя
+                update_user_meta($user_id, 'steam_message_deleted_' . $message_id, '1');
+                $deleted = true;
+            }
         }
         $updated_messages[] = $message;
     }
 
     if ($deleted) {
         update_option('steam_auth_messages', $updated_messages);
-        delete_user_meta($user_id, 'steam_message_read_' . $message_id);
         if (get_option('steam_auth_debug', false)) {
-            error_log("Steam Auth: Сообщение $message_id удалено для пользователя $user_id");
+            error_log("Steam Auth: Сообщение $message_id удалено/пометка для пользователя $user_id");
         }
         wp_send_json_success(['message' => 'Сообщение удалено']);
     } else {
@@ -1594,34 +1627,30 @@ function delete_user_message($user_id, $message_id) {
     }
 }
 
-function delete_all_read_messages($user_id) {
+function delete_all_messages($user_id) {
     $all_messages = get_option('steam_auth_messages', []);
+    $initial_count = count($all_messages);
     $updated_messages = [];
+    $affected = false;
 
     foreach ($all_messages as $message) {
-        $is_for_user = $message['user_id'] == $user_id;
-        if ($is_for_user && get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) == '1') {
+        if ((int)$message['user_id'] === (int)$user_id) {
+            // Удаляем личные сообщения пользователя полностью
             delete_user_meta($user_id, 'steam_message_read_' . $message['id']);
-            continue; // Пропускаем только прочитанные сообщения этого пользователя
+            $affected = true;
+            continue;
+        } elseif ((int)$message['user_id'] === 0) {
+            // Помечаем общие сообщения как удалённые для текущего пользователя
+            update_user_meta($user_id, 'steam_message_deleted_' . $message['id'], '1');
+            $affected = true;
         }
         $updated_messages[] = $message;
     }
 
-    update_option('steam_auth_messages', $updated_messages);
-}
-
-function delete_all_messages($user_id) {
-    $all_messages = get_option('steam_auth_messages', []);
-    $initial_count = count($all_messages);
-    $updated_messages = array_filter($all_messages, function($message) use ($user_id) {
-        return $message['user_id'] != $user_id;
-    });
-    $updated_count = count($updated_messages);
-
-    if ($initial_count > $updated_count) {
-        update_option('steam_auth_messages', array_values($updated_messages));
+    if ($affected) {
+        update_option('steam_auth_messages', $updated_messages);
         if (get_option('steam_auth_debug', false)) {
-            error_log("Steam Auth: Все сообщения пользователя $user_id удалены");
+            error_log("Steam Auth: Все сообщения пользователя $user_id обработаны (личные удалены, общие помечены)");
         }
         wp_send_json_success(['message' => 'Все сообщения удалены']);
     } else {
@@ -1629,6 +1658,34 @@ function delete_all_messages($user_id) {
             error_log("Steam Auth: Нет сообщений для удаления у пользователя $user_id");
         }
         wp_send_json_error(['message' => 'Нет сообщений для удаления']);
+    }
+}
+
+function delete_all_read_messages($user_id) {
+    $all_messages = get_option('steam_auth_messages', []);
+    $updated_messages = [];
+    $affected = false;
+
+    foreach ($all_messages as $message) {
+        $is_read = get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) === '1';
+        if ((int)$message['user_id'] === (int)$user_id && $is_read) {
+            // Удаляем прочитанные личные сообщения
+            delete_user_meta($user_id, 'steam_message_read_' . $message['id']);
+            $affected = true;
+            continue;
+        } elseif ((int)$message['user_id'] === 0 && $is_read) {
+            // Помечаем прочитанные общие сообщения как удалённые
+            update_user_meta($user_id, 'steam_message_deleted_' . $message['id'], '1');
+            $affected = true;
+        }
+        $updated_messages[] = $message;
+    }
+
+    if ($affected) {
+        update_option('steam_auth_messages', $updated_messages);
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Все прочитанные сообщения пользователя $user_id обработаны");
+        }
     }
 }
 
@@ -1808,10 +1865,11 @@ function steam_auth_load_tab() {
     }
 
     // Сообщения
-    $messages = get_user_messages($user_id);
-    $unread_count = count(array_filter($messages, function($message) {
-        return !$message['is_read'];
-    }));
+    // $messages = get_user_messages($user_id);
+    // $unread_count = count(array_filter($messages, function($message) {
+    //     return !$message['is_read'];
+    // }));
+    $unread_count = steam_auth_get_unread_messages_count($user_id);
 
     // Функция для префикса иконок (копируем из шорткода)
     function get_icon_prefix($icon_name) {
@@ -1831,7 +1889,11 @@ function steam_auth_load_tab() {
     // Определяем вкладку и режим редактирования
     $tab = isset($_POST['tab']) ? sanitize_text_field($_POST['tab']) : 'profile';
     $edit = isset($_POST['edit']) && $_POST['edit'] === 'true';
+    $page = isset($_POST['page']) ? max(1, (int)$_POST['page']) : 1;
+    $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
     $_GET['edit'] = $edit ? 'true' : null;
+    $_GET['page'] = $page;
+    $_GET['category'] = $category;
 
     // Проверяем существование файла вкладки
     $tab_file = plugin_dir_path(__FILE__) . "tabs/{$tab}-tab.php";
@@ -1935,5 +1997,14 @@ function steam_auth_update_discord_notifications_profile() {
 
     $message = $enabled == '1' ? 'Уведомления Discord включены' : 'Уведомления Discord отключены';
     wp_send_json_success(['message' => $message]);
+}
+
+function get_message_categories() {
+    $all_messages = get_option('steam_auth_messages', []);
+    $categories = array_unique(array_column($all_messages, 'category'));
+    // Убираем пустые значения и сортируем
+    $categories = array_filter($categories);
+    sort($categories);
+    return $categories;
 }
 ?>
