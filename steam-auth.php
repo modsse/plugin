@@ -1571,17 +1571,14 @@ function delete_user_message($user_id, $message_id) {
     $updated_messages = [];
 
     foreach ($all_messages as $message) {
-        if ($message['id'] === $message_id && ($message['user_id'] == $user_id || $message['user_id'] == 0)) {
-            // Проверяем, что сообщение принадлежит пользователю или является общим
-            if (get_user_meta($user_id, 'steam_message_read_' . $message_id, true) == '1') {
-                continue; // Пропускаем удаляемое сообщение
-            }
+        if ($message['id'] === $message_id && $message['user_id'] == $user_id) {
+            continue; // Пропускаем сообщение, предназначенное только для этого пользователя
         }
         $updated_messages[] = $message;
     }
 
     update_option('steam_auth_messages', $updated_messages);
-    delete_user_meta($user_id, 'steam_message_read_' . $message_id); // Удаляем метку о прочтении
+    delete_user_meta($user_id, 'steam_message_read_' . $message_id);
 }
 
 function delete_all_read_messages($user_id) {
@@ -1589,10 +1586,10 @@ function delete_all_read_messages($user_id) {
     $updated_messages = [];
 
     foreach ($all_messages as $message) {
-        $is_for_user = ($message['user_id'] == $user_id) || ($message['user_id'] == 0);
+        $is_for_user = $message['user_id'] == $user_id;
         if ($is_for_user && get_user_meta($user_id, 'steam_message_read_' . $message['id'], true) == '1') {
             delete_user_meta($user_id, 'steam_message_read_' . $message['id']);
-            continue; // Пропускаем прочитанные сообщения
+            continue; // Пропускаем только прочитанные сообщения этого пользователя
         }
         $updated_messages[] = $message;
     }
@@ -1605,11 +1602,10 @@ function delete_all_messages($user_id) {
     $updated_messages = [];
 
     foreach ($all_messages as $message) {
-        $is_for_user = ($message['user_id'] == $user_id) || ($message['user_id'] == 0);
+        $is_for_user = $message['user_id'] == $user_id;
         if ($is_for_user) {
-            // Удаляем метку о прочтении, если она есть
             delete_user_meta($user_id, 'steam_message_read_' . $message['id']);
-            continue; // Пропускаем сообщение пользователя
+            continue; // Пропускаем только сообщения этого пользователя
         }
         $updated_messages[] = $message;
     }
@@ -1912,5 +1908,17 @@ function steam_auth_delete_all() {
     $user_id = get_current_user_id();
     delete_all_messages($user_id);
     wp_send_json_success();
+}
+
+add_action('wp_ajax_update_discord_notifications_profile', 'steam_auth_update_discord_notifications_profile');
+function steam_auth_update_discord_notifications_profile() {
+    check_ajax_referer('steam_profile_nonce', 'nonce');
+    $user_id = get_current_user_id();
+    $enabled = isset($_POST['enabled']) && $_POST['enabled'] == '1' ? '1' : '0';
+
+    update_user_meta($user_id, 'discord_notifications_enabled', $enabled);
+
+    $message = $enabled == '1' ? 'Уведомления Discord включены' : 'Уведомления Discord отключены';
+    wp_send_json_success(['message' => $message]);
 }
 ?>

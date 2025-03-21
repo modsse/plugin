@@ -20,18 +20,18 @@ $messages = get_user_messages($user_id, $category_filter);
                     </div>
                     <div class="message-content"><?php echo nl2br(esc_html($message['content'])); ?></div>
                     <div class="message-actions">
-                        <?php if (!$message['is_read']): ?>
-                            <a href="#" class="mark-read" data-message-id="<?php echo esc_attr($message['id']); ?>">Прочитать</a>
-                        <?php else: ?>
-                            <a href="#" class="delete-message" data-message-id="<?php echo esc_attr($message['id']); ?>" onclick="return confirm('Удалить это сообщение?');">Удалить</a>
-                        <?php endif; ?>
-                    </div>
+                    <?php if (!$message['is_read']): ?>
+                        <a href="#" class="mark-read" data-message-id="<?php echo esc_attr($message['id']); ?>">Прочитать</a>
+                    <?php else: ?>
+                        <a href="#" class="delete-message" data-message-id="<?php echo esc_attr($message['id']); ?>">Удалить</a>
+                    <?php endif; ?>
+                </div>
                 </li>
             <?php endforeach; ?>
         </ul>
         <div class="message-actions">
-            <a href="#" class="delete-all-read" onclick="return confirm('Удалить все прочитанные сообщения?');">Удалить прочитанные</a>
-            <a href="#" class="delete-all" onclick="return confirm('Удалить все сообщения?');">Удалить все</a>
+            <a href="#" class="delete-all-read">Удалить прочитанные</a>
+            <a href="#" class="delete-all">Удалить все</a>
         </div>
     <?php endif; ?>
 </div>
