@@ -291,7 +291,15 @@ jQuery(document).ready(function($) {
     $(document).on('submit', '#steam-send-message-form', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Отправка формы #steam-send-message-form');
-        const formData = $(this).serialize();
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner'); // Предполагаем, что спиннер называется save-spinner
+
+        // Показываем спиннер и блокируем кнопку
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+
+        const formData = $form.serialize();
         const data = formData + '&action=steam_auth_send_message&nonce=' + steamAuthAjax.nonce;
         if (steamAuthAjax.debug) console.log('Данные для отправки:', data);
 
@@ -316,6 +324,11 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Ошибка AJAX:', status, error);
                 showNotification('Ошибка AJAX: ' + error, 'error');
+            },
+            complete: function() {
+                // Скрываем спиннер и разблокируем кнопку
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
             }
         });
     });
@@ -384,7 +397,15 @@ jQuery(document).ready(function($) {
     $(document).on('submit', '#general-form', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Отправка формы #general-form');
-        const data = $(this).serialize() + '&action=steam_auth_save_settings&general=1';
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner'); // Предполагаем единый ID спиннера
+
+        // Показываем спиннер и блокируем кнопку
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+
+        const data = $form.serialize() + '&action=steam_auth_save_settings&general=1';
         if (steamAuthAjax.debug) console.log('Данные для отправки:', data);
         $.ajax({
             url: steamAuthAjax.ajaxurl,
@@ -401,6 +422,11 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Ошибка AJAX:', status, error);
                 showNotification('Ошибка AJAX', 'error');
+            },
+            complete: function() {
+                // Скрываем спиннер и разблокируем кнопку
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
             }
         });
     });
@@ -408,7 +434,15 @@ jQuery(document).ready(function($) {
     $(document).on('submit', '#profile-form', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Отправка формы #profile-form');
-        const data = $(this).serialize() + '&action=steam_auth_save_settings&profile=1';
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner'); // Предполагаем единый ID спиннера
+
+        // Показываем спиннер и блокируем кнопку
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+
+        const data = $form.serialize() + '&action=steam_auth_save_settings&profile=1';
         if (steamAuthAjax.debug) console.log('Данные для отправки:', data);
         $.ajax({
             url: steamAuthAjax.ajaxurl,
@@ -431,6 +465,11 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Ошибка AJAX:', status, error);
                 showNotification('Ошибка AJAX', 'error');
+            },
+            complete: function() {
+                // Скрываем спиннер и разблокируем кнопку
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
             }
         });
     });
@@ -438,7 +477,15 @@ jQuery(document).ready(function($) {
     $(document).on('submit', '#discord-notifications-form', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Отправка формы #discord-notifications-form');
-        const data = $(this).serialize() + '&action=steam_auth_save_settings&discord-notifications=1';
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner');
+
+        // Показываем спиннер и блокируем кнопку
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+
+        const data = $form.serialize() + '&action=steam_auth_save_settings&discord-notifications=1';
         if (steamAuthAjax.debug) console.log('Данные для отправки:', data);
         $.ajax({
             url: steamAuthAjax.ajaxurl,
@@ -455,6 +502,11 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Ошибка AJAX:', status, error);
                 showNotification('Ошибка AJAX', 'error');
+            },
+            complete: function() {
+                // Скрываем спиннер и разблокируем кнопку
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
             }
         });
     });
@@ -462,9 +514,17 @@ jQuery(document).ready(function($) {
     $(document).on('submit', '#steam-auth-mods-form', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Отправка формы #steam-auth-mods-form');
-        const formData = $(this).serializeArray(); // Получаем массив данных
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner'); // Предполагаем единый ID спиннера
+
+        // Показываем спиннер и блокируем кнопку
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+
+        const formData = $form.serializeArray(); // Получаем массив данных
         formData.push({ name: 'action', value: 'steam_auth_save_settings' });
-        formData.push({ name: 'tab', value: 'mods' }); // Заменяем mods=1 на tab=mods
+        formData.push({ name: 'tab', value: 'mods' });
         formData.push({ name: 'nonce', value: steamAuthAjax.nonce });
         if (steamAuthAjax.debug) console.log('Данные для отправки:', formData);
     
@@ -476,7 +536,6 @@ jQuery(document).ready(function($) {
                 if (steamAuthAjax.debug) console.log('Ответ сервера:', response);
                 if (response.success) {
                     showNotification(response.data.message, 'success');
-                    // Перезагрузка вкладки, если нужно
                 } else {
                     showNotification('Ошибка: ' + response.data, 'error');
                 }
@@ -484,6 +543,11 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.error('Ошибка AJAX:', status, error);
                 showNotification('Ошибка AJAX: ' + error, 'error');
+            },
+            complete: function() {
+                // Скрываем спиннер и разблокируем кнопку
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
             }
         });
     });
@@ -659,6 +723,13 @@ jQuery(document).ready(function($) {
     $(document).on('click', '#discord-embed-test', function(e) {
         e.preventDefault();
         if (steamAuthAjax.debug) console.log('Клик по "Отправить тестовое"');
+        const $button = $(this);
+        const $testSpinner = $('#test-spinner');
+
+        // Показываем спиннер и блокируем кнопку
+        $testSpinner.show();
+        $button.prop('disabled', true);
+
         const data = $('#discord-notifications-form').serialize() + '&action=steam_auth_test_discord_embed';
         $.post(steamAuthAjax.ajaxurl, data, function(response) {
             if (steamAuthAjax.debug) console.log('Ответ тестовой отправки:', response);
@@ -666,6 +737,10 @@ jQuery(document).ready(function($) {
         }).fail(function(xhr, status, error) {
             console.error('Ошибка AJAX:', status, error);
             showNotification('Ошибка AJAX', 'error');
+        }).always(function() {
+            // Скрываем спиннер и разблокируем кнопку
+            $testSpinner.hide();
+            $button.prop('disabled', false);
         });
     });
 
@@ -782,6 +857,24 @@ jQuery(document).ready(function($) {
         };
     }
 
+    // Переключение вкладок для .tab-link
+    $(document).on('click', '.tab-link', function(e) {
+        e.preventDefault(); // Предотвращаем стандартное поведение ссылки, если есть
+        if (steamAuthAjax.debug) console.log('Клик по вкладке .tab-link:', $(this).data('tab'));
+
+        var tabId = $(this).data('tab');
+
+        // Удаляем класс active у всех вкладок и контента
+        $('.tab-link').removeClass('active');
+        $('.tab-content').removeClass('active');
+
+        // Добавляем класс active к текущей вкладке и контенту
+        $(this).addClass('active');
+        $('#' + tabId).addClass('active');
+
+        if (steamAuthAjax.debug) console.log('Активная вкладка:', tabId);
+    });
+
     const tabs = document.querySelectorAll('.nav-tab');
     const content = document.getElementById('tab-content');
 
@@ -803,30 +896,12 @@ jQuery(document).ready(function($) {
     tabs.forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
-            if (steamAuthAjax.debug) console.log('Клик по вкладке:', this.dataset.tab);
+            if (steamAuthAjax.debug) console.log('Клик по вкладке .nav-tab:', this.dataset.tab);
             tabs.forEach(t => t.classList.remove('nav-tab-active'));
             this.classList.add('nav-tab-active');
             loadTab(this.dataset.tab);
         });
     });
-
-    // $(document).on('click', '#clear-logs', function() {
-    //     showConfirmModal('Вы уверены, что хотите очистить все логи?', function(confirmed) {
-    //         if (confirmed) {
-    //             if (steamAuthAjax.debug) console.log('Попытка очистки логов');
-    //             $.post(steamAuthAjax.ajaxurl, {
-    //                 action: 'steam_auth_clear_logs',
-    //                 nonce: steamAuthAjax.nonce
-    //             }, function(response) {
-    //                 if (steamAuthAjax.debug) console.log('Логи очищены, обновление вкладки');
-    //                 content.innerHTML = '<div class="notice notice-success is-dismissible"><p>Логи успешно очищены</p></div>' + response;
-    //             }).fail(function(xhr, status, error) {
-    //                 console.error('Ошибка при очистке логов:', status, error);
-    //                 content.innerHTML = '<div class="notice notice-error is-dismissible"><p>Ошибка при очистке логов: ' + error + '</p></div>' + content.innerHTML;
-    //             });
-    //         }
-    //     });
-    // });
 
     $(document).on('click', '.steam-approve-unlink-discord', function() {
         const userId = $(this).data('user-id');
@@ -1030,6 +1105,32 @@ jQuery(document).ready(function($) {
                 if (steamAuthAjax.debug) console.log('Очистка отменена пользователем');
             }
         });
+    });
+
+    // Тёмная тема
+    function applyTheme(theme) {
+        const $body = $('body');
+        if (theme === 'dark') {
+            $body.addClass('steam-auth-dark-theme');
+            $('#theme-toggle').text('Светлая тема');
+        } else {
+            $body.removeClass('steam-auth-dark-theme');
+            $('#theme-toggle').text('Тёмная тема');
+        }
+        localStorage.setItem('steamAuthTheme', theme);
+        if (steamAuthAjax.debug) console.log('Тема применена:', theme);
+    }
+
+    // Инициализация темы при загрузке
+    const savedTheme = localStorage.getItem('steamAuthTheme') || 'light';
+    applyTheme(savedTheme);
+
+    // Переключатель темы
+    $(document).on('click', '#theme-toggle', function(e) {
+        e.preventDefault();
+        const currentTheme = localStorage.getItem('steamAuthTheme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        applyTheme(newTheme);
     });
 
     loadTab('general');

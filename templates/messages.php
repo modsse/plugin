@@ -1,5 +1,4 @@
 <?php
-// templates/messages.php
 $users = get_users(['fields' => ['ID', 'user_login']]);
 $roles = wp_roles()->get_names();
 $all_messages = get_option('steam_auth_messages', []);
@@ -7,7 +6,7 @@ $all_messages = get_option('steam_auth_messages', []);
 
 <h2>Сообщения</h2>
 <form id="steam-messages-form" method="post">
-    <table class="wp-list-table widefat fixed striped">
+    <table class="wp-list-table widefat fixed"> <!-- Убрал .striped -->
         <thead>
             <tr>
                 <th scope="col" style="width: 30px;"><input type="checkbox" id="select-all-messages"></th>
@@ -112,6 +111,7 @@ $all_messages = get_option('steam_auth_messages', []);
         </tr>
     </table>
     <p class="submit">
-        <input type="submit" class="button button-primary" value="Отправить сообщение">
-    </p>
+    <input type="submit" class="button-primary" value="Отправить сообщение" />
+    <span class="loading-spinner" id="save-spinner" style="display: none;"></span>
+</p>
 </form>

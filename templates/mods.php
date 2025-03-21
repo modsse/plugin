@@ -1,13 +1,13 @@
 <h2>Настройка модов</h2>
 <form id="steam-auth-mods-form">
-    <table class="wp-list-table widefat fixed striped">
+    <table class="wp-list-table widefat fixed">
     <thead>
     <tr>
         <th>Название роли</th>
         <th>Считать модом</th>
         <th>Версия</th>
         <th>Картинка</th>
-        <th>URL документации</th> <!-- Новое поле -->
+        <th>URL документации</th>
     </tr>
 </thead>
 <tbody>
@@ -15,8 +15,11 @@
         <tr>
             <td><?php echo esc_html($role['name']); ?></td>
             <td>
-                <input type="checkbox" name="mods[<?php echo esc_attr($role_id); ?>][is_mod]" 
-                       <?php echo isset($selected_mod_roles[$role_id]) ? 'checked' : ''; ?>>
+                <label class="toggle-switch" data-tooltip="Считать эту роль модератором">
+                    <input type="checkbox" name="mods[<?php echo esc_attr($role_id); ?>][is_mod]" 
+                           <?php echo isset($selected_mod_roles[$role_id]) ? 'checked' : ''; ?>>
+                    <span class="slider"></span>
+                </label>
             </td>
             <td>
                 <input type="text" name="mods[<?php echo esc_attr($role_id); ?>][version]" 
@@ -37,5 +40,5 @@
     <?php endforeach; ?>
 </tbody>
     </table>
-    <p><input type="submit" class="button button-primary" value="Сохранить"></p>
+    <p><input type="submit" class="button button-primary" value="Сохранить" data-tooltip="Сохранить настройки модов"></p>
 </form>

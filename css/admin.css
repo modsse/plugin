@@ -1,325 +1,445 @@
-.steam-auth-table {
+/* Общие стили с переменными */
+:root {
+    --bg-color: #fff;
+    --text-color: #374151;
+    --secondary-text: #64748b;
+    --button-bg: #e5e7eb;
+    --button-hover: #d1d5db;
+    --button-active: #d1d5db;
+    --button-primary-bg: #6b7280;
+    --button-primary-hover: #4b5563;
+    --table-bg: #e5e7eb;
+    --table-alt-bg: #f3f4f6;
+    --table-header-bg: #d1d5db;
+    --border-color: #94a3b8;
+    --input-bg: #f3f4f6;
+    --input-border: #94a3b8;
+    --modal-bg: #e5e7eb;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --notice-bg: #e5e7eb;
+    --nav-tab-bg: #e5e7eb;
+    --nav-tab-active-bg: #6b7280;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+}
+
+/* Тёмная тема - новый стиль с фиолетовым акцентом */
+.steam-auth-dark-theme {
+    --bg-color: #1f2937;
+    --text-color: #e5e7eb;
+    --secondary-text: #9ca3af;
+    --button-bg: #374151;
+    --button-hover: #4b5563;
+    --button-active: #2d3748;
+    --button-primary-bg: #8b5cf6;
+    --button-primary-hover: #a78bfa;
+    --table-bg: #2d3748;
+    --table-alt-bg: #374151;
+    --table-header-bg: #4b5563;
+    --border-color: #6b7280;
+    --input-bg: #374151;
+    --input-border: #6b7280;
+    --modal-bg: #2d3748;
+    --shadow-color: rgba(255, 255, 255, 0.1);
+    --notice-bg: #374151;
+    --nav-tab-bg: #374151;
+    --nav-tab-active-bg: #8b5cf6;
+    --success-color: #34d399;
+    --error-color: #f87171;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: background 0.3s, color 0.3s;
+}
+
+/* Заголовки */
+h1 { font-size: 28px; font-weight: 600; color: var(--text-color); padding: 8px 0; margin-bottom: 20px; border-top: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color); text-shadow: 0 1px 2px var(--shadow-color); }
+h2 { font-size: 22px; font-weight: 500; color: var(--text-color); margin-bottom: 15px; text-shadow: 0 1px 2px var(--shadow-color); }
+h3 { font-size: 16px; font-weight: 500; color: var(--secondary-text); margin-bottom: 10px; }
+
+/* Кнопки */
+.button, .button-primary, #add-custom-field, input[type="submit"].button-primary {
+    padding: 6px 12px;
+    border: none;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+}
+
+.button::before, .button-primary::before, #add-custom-field::before, input[type="submit"].button-primary::before {
+    font-family: "dashicons";
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+.button, #add-custom-field { background-color: var(--button-bg); color: var(--text-color); }
+.button:hover, #add-custom-field:hover { background-color: var(--button-hover); transform: translateY(-2px); box-shadow: 0 6px 12px var(--shadow-color); }
+.button:active, #add-custom-field:active { transform: translateY(1px); box-shadow: 0 1px 2px var(--shadow-color); }
+.button-primary, input[type="submit"].button-primary { background-color: var(--button-primary-bg); color: #fff; }
+.button-primary:hover, input[type="submit"].button-primary:hover { background-color: var(--button-primary-hover); transform: translateY(-2px); box-shadow: 0 6px 12px var(--shadow-color); }
+.button-primary:active, input[type="submit"].button-primary:active { transform: translateY(1px); box-shadow: 0 1px 2px var(--shadow-color); }
+.button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Специфические кнопки с иконками */
+.upload-image-button::before { content: "\f317"; }
+#clear-logs::before { content: "\f182"; }
+#bulk-delete-messages::before { content: "\f182"; }
+#save-custom-template::before { content: "\f147"; }
+#discord-embed-preview::before { content: "\f177"; }
+#discord-embed-test::before { content: "\f308"; }
+#add-custom-field::before { content: "\f132"; }
+.steam-approve-unlink-discord::before { content: "\f147"; }
+.steam-reject-unlink-discord::before { content: "\f335"; }
+.remove-field::before, .remove-general-field::before { content: "\f182"; }
+.button-primary::before, input[type="submit"].button-primary::before { content: "\f147"; }
+
+/* Общие стили для кнопок */
+.upload-image-button, #clear-logs, #bulk-delete-messages, #save-custom-template, #discord-embed-preview, #discord-embed-test, .steam-approve-unlink-discord, .steam-reject-unlink-discord, .remove-field, .remove-general-field {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+}
+
+.upload-image-button:hover, #clear-logs:hover, #bulk-delete-messages:hover, #save-custom-template:hover, #discord-embed-preview:hover, #discord-embed-test:hover, .steam-approve-unlink-discord:hover, .remove-field:hover, .remove-general-field:hover {
+    background-color: var(--button-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px var(--shadow-color);
+}
+
+.steam-reject-unlink-discord { background-color: #fecaca; color: #991b1b; }
+.steam-reject-unlink-discord:hover { background-color: #ef4444; color: #fff; transform: translateY(-2px); box-shadow: 0 6px 12px var(--shadow-color); }
+
+/* Спиннер загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--text-color);
+    border-top: 2px solid var(--button-primary-bg);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Таблицы */
+.wp-list-table, .form-table, .messages-table, .steam-auth-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    background-color: var(--table-bg);
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px var(--shadow-color);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.steam-auth-table th,
-.steam-auth-table td {
-    padding: 10px;
-    border: 1px solid #ddd;
+.wp-list-table th, .form-table th, .messages-table th, .steam-auth-table th {
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+    font-weight: 500;
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
     text-align: left;
-}
-
-.steam-auth-table th {
-    background: #f1f1f1;
-    font-weight: bold;
-}
-
-.steam-auth-table td input[type="text"],
-.steam-auth-table td select {
-    width: 100%;
-    padding: 5px;
-    box-sizing: border-box;
-}
-
-.steam-auth-table td input[type="checkbox"] {
-    margin: 0;
-}
-
-.remove-field {
-    background: #dc3545;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.remove-field:hover {
-    background: #c82333;
-}
-
-.nav-tab-wrapper {
-    margin-bottom: 20px;
-}
-
-.nav-tab {
-    padding: 10px 15px;
-}
-
-.nav-tab-active {
-    background: #fff;
-    border-bottom: 1px solid #fff;
-}
-
-.select2-container {
-    width: 100% !important;
-}
-
-.select2-selection__rendered {
-    display: flex;
-    align-items: center;
-}
-
-.select2-selection__rendered i {
-    margin-right: 8px;
-}
-
-.steam-edit-btn, .steam-logout-btn, .steam-save-btn, .steam-cancel-btn {
-    display: inline-block;
-    padding: 8px 16px;
-    margin: 5px;
-    text-decoration: none;
-    color: #fff;
-    background: #0073aa;
-    border-radius: 5px;
-}
-
-.steam-edit-btn:hover, .steam-save-btn:hover {
-    background: #005d82;
-}
-
-.steam-logout-btn, .steam-cancel-btn {
-    background: #dc3545;
-}
-
-.steam-logout-btn:hover, .steam-cancel-btn:hover {
-    background: #c82333;
-}
-
-/* Стили для уведомлений */
-.notice {
-    margin: 10px 0;
-    padding: 10px;
-    border-left: 4px solid;
-}
-
-.notice-success {
-    background: #d4edda;
-    border-left-color: #155724;
-    color: #155724;
-}
-
-.notice-error {
-    background: #f8d7da;
-    border-left-color: #721c24;
-    color: #721c24;
-}
-
-.notice.is-dismissible {
     position: relative;
-    padding-right: 30px;
 }
 
-.notice.is-dismissible::after {
-    content: '\00d7';
-    position: absolute;
-    top: 5px;
-    right: 10px;
-    font-size: 20px;
-    cursor: pointer;
+.wp-list-table td, .form-table td, .messages-table td, .steam-auth-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    position: relative;
 }
 
-/* Модальное окно подтверждения */
-.steam-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
+.wp-list-table tr:nth-child(even), .form-table tr:nth-child(even), .messages-table tr:nth-child(even), .steam-auth-table tr:nth-child(even) {
+    background-color: var(--table-alt-bg);
+}
+
+.wp-list-table tr, .form-table tr, .messages-table tr, .steam-auth-table tr {
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wp-list-table tr:hover, .form-table tr:hover, .messages-table tr:hover, .steam-auth-table tr:hover {
+    background-color: var(--button-hover);
+    box-shadow: 0 2px 6px var(--shadow-color);
+}
+
+/* Переопределение для тёмной темы */
+.steam-auth-dark-theme .wp-list-table,
+.steam-auth-dark-theme .form-table,
+.steam-auth-dark-theme .messages-table,
+.steam-auth-dark-theme .steam-auth-table {
+    background-color: var(--table-bg);
+    color: var(--text-color);
+}
+
+.steam-auth-dark-theme .wp-list-table th,
+.steam-auth-dark-theme .form-table th,
+.steam-auth-dark-theme .messages-table th,
+.steam-auth-dark-theme .steam-auth-table th {
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+    border-bottom-color: var(--border-color);
+}
+
+.steam-auth-dark-theme .wp-list-table td,
+.steam-auth-dark-theme .form-table td,
+.steam-auth-dark-theme .messages-table td,
+.steam-auth-dark-theme .steam-auth-table td {
+    border-bottom-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.steam-auth-dark-theme .wp-list-table tr:nth-child(even),
+.steam-auth-dark-theme .form-table tr:nth-child(even),
+.steam-auth-dark-theme .messages-table tr:nth-child(even),
+.steam-auth-dark-theme .steam-auth-table tr:nth-child(even) {
+    background-color: var(--table-alt-bg);
+}
+
+/* Иконки в таблицах */
+.wp-list-table td:first-child::before, .form-table th::before, .steam-auth-table td:first-child::before {
+    font-family: "dashicons";
+    font-size: 16px;
+    margin-right: 6px;
+    vertical-align: middle;
+    color: var(--secondary-text);
+}
+
+/* Специфические иконки */
+.form-table th:contains("Bot url для запросов")::before { content: "\f111"; }
+.form-table th:contains("Роль по умолчанию")::before { content: "\f307"; }
+.form-table th:contains("Режим отладки")::before { content: "\f120"; }
+.form-table th:contains("Ключ админ-входа")::before { content: "\f112"; }
+.form-table th:contains("API-ключ для Telegram бота")::before { content: "\f488"; }
+.form-table th:contains("Лимит логов")::before { content: "\f163"; }
+.form-table th:contains("Кастомная страница входа")::before { content: "\f541"; }
+.form-table th:contains("Discord Guild ID")::before { content: "\f237"; }
+.form-table th:contains("Discord Client ID")::before { content: "\f310"; }
+.form-table th:contains("Discord Client Secret")::before { content: "\f112"; }
+.form-table th:contains("Discord Bot Token")::before { content: "\f488"; }
+.form-table th:contains("Steam API Key")::before { content: "\f321"; }
+.form-table th:contains("Цвет полоски")::before { content: "\f309"; }
+.form-table th:contains("Поля Embed")::before { content: "\f163"; }
+.form-table th:contains("Кастомные поля")::before { content: "\f132"; }
+.steam-auth-table td:first-child:contains("email")::before { content: "\f465"; }
+.steam-auth-table td:first-child:contains("username")::before { content: "\f110"; }
+.steam-auth-table td:first-child:contains("avatar")::before { content: "\f128"; }
+#steam-auth-mods-form .wp-list-table td:nth-child(1)::before { content: "\f307"; }
+
+/* Специфические стили для таблицы в mods.php */
+#steam-auth-mods-form .wp-list-table th:nth-child(1),
+#steam-auth-mods-form .wp-list-table td:nth-child(1) { width: 150px; word-wrap: break-word; }
+#steam-auth-mods-form .wp-list-table td:nth-child(2) { width: 80px; }
+#steam-auth-mods-form .wp-list-table td:nth-child(3) { width: 100px; }
+#steam-auth-mods-form .wp-list-table td:nth-child(4) { width: 250px; white-space: nowrap; }
+#steam-auth-mods-form .wp-list-table td:nth-child(5) { width: 200px; }
+
+/* Специфические стили для таблицы "Поля Embed" */
+#discord-notifications-form .form-table .embed-fields-table td { padding: 4px; }
+
+/* Формы и поля ввода */
+input[type="text"], input[type="url"], input[type="number"], textarea, select {
     width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    max-width: 350px;
+    padding: 6px;
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-size: 13px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.steam-modal-content {
-    background: #fff;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-    max-width: 400px;
-    text-align: center;
+input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+    border-color: var(--button-primary-bg);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5); /* Под новый цвет кнопок */
+    outline: none;
 }
 
-.steam-modal-buttons {
-    margin-top: 20px;
+textarea { min-height: 80px; }
+
+/* Выпадающие списки в тёмной теме */
+.steam-auth-dark-theme select {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-color: var(--input-border);
+    -webkit-appearance: menulist;
+    -moz-appearance: menulist;
+    appearance: menulist;
 }
 
-.steam-modal-buttons button {
-    margin: 0 10px;
+.steam-auth-dark-theme select:focus {
+    border-color: var(--button-primary-bg);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
 }
 
-/* Стили для формы отправки сообщений */
-.steam-auth-message-form th {
-    width: 150px; /* Фиксированная ширина для меток */
-    vertical-align: top;
+/* Стили для переключателей (слайдеров) */
+.toggle-switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+.toggle-switch input[type="checkbox"] { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: 0.3s; border-radius: 18px; }
+.toggle-switch .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: var(--text-color); transition: 0.3s; border-radius: 50%; }
+.toggle-switch input[type="checkbox"]:checked + .slider { background-color: var(--success-color); }
+.toggle-switch input[type="checkbox"]:checked + .slider:before { transform: translateX(16px); }
+
+/* Тултипы */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover:after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--button-hover);
+    color: var(--text-color);
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    animation: fadeInTooltip 0.2s ease forwards;
+    animation-delay: 0.5s;
 }
 
-.steam-auth-message-form td {
-    padding: 15px 10px; /* Увеличенный отступ */
+@keyframes fadeInTooltip {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-.steam-auth-message-form select,
-.steam-auth-message-form input[type="text"] {
-    width: 300px; /* Увеличенная ширина для полей */
-    max-width: 100%;
+.form-table th, .steam-auth-table th { width: 150px; vertical-align: top; }
+.form-table td, .steam-auth-table td { padding: 10px 8px; }
+
+/* Описание */
+.description { color: var(--secondary-text); font-size: 11px; margin-top: 3px; }
+
+/* Основные табы */
+.nav-tab-wrapper { margin-bottom: 15px; }
+.nav-tab { display: inline-block; padding: 10px 20px; background-color: var(--nav-tab-bg); color: var(--text-color); text-decoration: none; text-align: center; cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease; font-weight: 600; font-size: 15px; border-radius: 6px; position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.nav-tab[data-tab="main"]::before { font-family: "dashicons"; content: "\f108"; }
+.nav-tab[data-tab="discord"]::before { font-family: "dashicons"; content: "\f237"; }
+.nav-tab[data-tab="steam"]::before { font-family: "dashicons"; content: "\f321"; }
+.nav-tab:hover { background-color: var(--button-hover); color: var(--text-color); }
+.nav-tab-active { background-color: var(--nav-tab-active-bg); color: #fff; transform: scale(1.05); }
+.nav-tab-active:hover { background-color: var(--button-primary-hover); }
+
+/* Подтабы */
+.tabs-nav { list-style: none; padding: 0; margin: 0 0 20px 0; display: flex; gap: 10px; border-bottom: 1px solid var(--border-color); }
+.tab-link { display: inline-block; padding: 8px 20px; background-color: var(--nav-tab-bg); color: var(--text-color); text-decoration: none; text-align: center; cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease; font-weight: 500; font-size: 14px; border-radius: 6px 6px 0 0; }
+.tab-link:hover { background-color: var(--button-hover); color: var(--text-color); }
+.tab-link.active { background-color: var(--nav-tab-active-bg); color: #fff; border-bottom: 2px solid var(--button-primary-hover); transform: scale(1.05); }
+.tab-link.active:hover { background-color: var(--button-primary-hover); }
+.tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+.tab-content.active { display: block; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.steam-auth-message-form textarea {
-    width: 500px; /* Широкое поле для текста */
-    max-width: 100%;
-    padding: 10px;
-    font-size: 14px;
+/* Уведомления */
+.notice { margin: 8px 0; padding: 10px; border-left: 4px solid; background-color: var(--notice-bg); box-shadow: 0 1px 3px var(--shadow-color); border-radius: 4px; color: var(--text-color); }
+.notice-success { border-left-color: var(--success-color); color: var(--success-color); }
+.notice-error { border-left-color: var(--error-color); color: var(--error-color); }
+.notice.is-dismissible { position: relative; padding-right: 30px; }
+.notice.is-dismissible::after { content: '\00d7'; position: absolute; top: 50%; right: 10px; transform: translateY(-50%); font-size: 18px; cursor: pointer; color: var(--secondary-text); }
+
+/* Модальные окна */
+.steam-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.4s ease-in-out; }
+.steam-modal-content { background: var(--modal-bg); padding: 15px; box-shadow: 0 2px 10px var(--shadow-color); max-width: 350px; text-align: center; border-radius: 8px; color: var(--text-color); animation: slideIn 0.4s ease-in-out; transform-origin: center; }
+.steam-modal-buttons { margin-top: 15px; }
+.steam-modal-buttons button { margin: 0 8px; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.steam-auth-message-form .description {
-    margin-top: 5px;
-    font-style: italic;
-    color: #666;
+/* Emoji Picker Modal */
+.steam-auth-dark-theme #emoji-picker-modal { background: var(--modal-bg); border-color: var(--border-color); color: var(--text-color); }
+
+/* Специфические элементы */
+.image-url { width: 65%; margin-right: 8px; }
+.delete-message { color: var(--error-color); text-decoration: none; transition: color 0.2s ease; }
+.delete-message:hover { color: #dc2626; text-decoration: underline; }
+
+/* Discord Embed Preview */
+#discord-embed-preview-container { margin-top: 15px; animation: embedFadeIn 0.3s ease-in-out; }
+
+@keyframes embedFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 #discord-embed-preview-content {
     position: relative;
-    border-radius: 4px;
     overflow: hidden;
-    background: #36393f; /* Цвет фона как в Discord */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Тень */
-    max-width: 440px; /* Реальная ширина Embed в Discord */
-    font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Шрифт Discord */
+    background: var(--table-bg);
+    box-shadow: 0 2px 10px var(--shadow-color);
+    max-width: 400px;
+    font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text-color);
 }
 
-#discord-embed-preview-content .embed-color-bar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-}
+#discord-embed-preview-content .embed-color-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+#discord-embed-preview-content .embed-inner { padding: 6px 12px 12px 16px; }
+#discord-embed-preview-content .embed-title { font-weight: 600; font-size: 15px; line-height: 18px; color: #fff; margin: 0 0 6px 0; }
+#discord-embed-preview-content .embed-description { font-size: 13px; line-height: 18px; color: var(--text-color); margin: 0 0 6px 0; }
+#discord-embed-preview-content .embed-timestamp { font-size: 11px; line-height: 14px; color: var(--secondary-text); margin-top: 6px; }
+#discord-embed-preview-content .embed-footer { font-size: 11px; line-height: 14px; color: var(--secondary-text); margin-top: 6px; display: flex; align-items: center; }
+#discord-embed-preview-content .embed-footer img { width: 18px; height: 18px; border-radius: 50%; margin-right: 6px; }
+#discord-embed-preview-content .embed-author { font-size: 13px; font-weight: 600; line-height: 18px; color: #fff; margin: 0 0 6px 0; display: flex; align-items: center; }
+#discord-embed-preview-content .embed-author img { width: 18px; height: 18px; border-radius: 50%; margin-right: 6px; }
 
-#discord-embed-preview-content .embed-inner {
-    padding: 8px 16px 16px 20px; /* Отступы как в Discord */
-}
+/* Кастомные поля и эмодзи */
+.custom-field { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.custom-field input[type="text"] { width: 180px; }
+.emoji-input { width: 80px; margin-left: 8px; }
+.emoji-picker { padding: 4px 8px; }
+#emoji-picker-modal { box-shadow: 0 2px 10px var(--shadow-color); border-radius: 8px; animation: slideIn 0.4s ease-in-out; background: var(--modal-bg); color: var(--text-color); }
+#emoji-list { max-height: 180px; overflow-y: auto; }
 
-#discord-embed-preview-content .embed-title {
-    font-weight: 600;
-    font-size: 16px;
-    line-height: 20px;
-    color: #ffffff;
-    margin: 0 0 8px 0;
-}
+/* Список кастомных шаблонов */
+#custom-template-list { margin-top: 15px; border: 1px solid var(--border-color); padding: 10px; background-color: var(--table-bg); box-shadow: 0 1px 3px var(--shadow-color); border-radius: 8px; }
+#custom-template-list h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--text-color); }
+.template-option { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--table-header-bg); margin-bottom: 8px; transition: background-color 0.3s ease, transform 0.2s ease; border-radius: 6px; }
+.template-option:hover { background-color: var(--button-hover); transform: translateX(5px); }
+.template-option span { font-size: 13px; color: var(--text-color); }
+.remove-custom-template { background-color: #fecaca; color: #991b1b; padding: 4px 8px; border: none; cursor: pointer; transition: background-color 0.3s ease; border-radius: 6px; }
+.remove-custom-template:hover { background-color: #ef4444; color: #fff; }
 
-#discord-embed-preview-content .embed-description {
-    font-size: 14px;
-    line-height: 20px;
-    color: #dcddde;
-    margin: 0 0 8px 0;
-}
+/* Разделители */
+hr.section-divider { border: 0; border-top: 2px solid var(--border-color); margin: 20px 0; }
 
-#discord-embed-preview-content .embed-timestamp {
-    font-size: 12px;
-    line-height: 16px;
-    color: #72767d;
-    margin-top: 8px;
-}
+/* Кнопка переключения темы */
+#theme-toggle { margin-left: 10px; padding: 5px 10px; cursor: pointer; }
 
-#discord-embed-preview-content .embed-footer {
-    font-size: 12px;
-    line-height: 16px;
-    color: #72767d;
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-}
-
-#discord-embed-preview-content .embed-footer img {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%; /* Круглые иконки */
-    margin-right: 8px;
-}
-
-#discord-embed-preview-content .embed-author {
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 20px;
-    color: #ffffff;
-    margin: 0 0 8px 0;
-    display: flex;
-    align-items: center;
-}
-
-#discord-embed-preview-content .embed-author img {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    margin-right: 8px;
-}
-
-.custom-field {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.custom-field input[type="text"] {
-    width: 200px;
-}
-.embed-field {
-    margin: 8px 0;
-    font-size: 14px;
-    line-height: 20px;
-    color: #dcddde;
-}
-.embed-field strong {
-    color: #ffffff;
-}
-
-.emoji-input {
-    width: 100px;
-    margin-left: 10px;
-}
-.custom-field {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.custom-field input[type="text"] {
-    width: 200px;
-}
-.custom-field .emoji-input {
-    width: 100px;
-}
-.embed-field {
-    margin: 8px 0;
-    font-size: 14px;
-    line-height: 20px;
-    color: #dcddde;
-}
-.embed-field strong {
-    color: #ffffff;
-}
-
-.message-actions .delete-all {
-    margin-left: 10px;
-    color: #dc3545; /* Красный цвет для акцента */
-    text-decoration: none;
-}
-.message-actions .delete-all:hover {
-    text-decoration: underline;
-}
-
-#bulk-delete-messages:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.wp-list-table .delete-message {
-    color: #dc3545;
-    text-decoration: none;
-}
-.wp-list-table .delete-message:hover {
-    text-decoration: underline;
+/* Адаптивность */
+@media (max-width: 768px) {
+    .wp-list-table, .form-table, .steam-auth-table { display: block; overflow-x: auto; }
+    .button, .button-primary, #add-custom-field, input[type="submit"].button-primary { padding: 8px 16px; font-size: 14px; }
+    .toggle-switch { width: 40px; height: 20px; }
+    .toggle-switch .slider:before { height: 16px; width: 16px; }
+    .toggle-switch input[type="checkbox"]:checked + .slider:before { transform: translateX(20px); }
+    .form-table th, .form-table td { display: block; width: 100%; padding: 8px; }
+    .form-table th { padding-bottom: 0; }
+    .tabs-nav { flex-direction: column; gap: 5px; }
+    .tab-link { width: 100%; border-radius: 6px; }
 }

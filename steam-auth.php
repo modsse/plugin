@@ -1079,7 +1079,7 @@ function steam_auth_sanitize_custom_templates($input) {
  * @since 1.0.0
  */
 
-function steam_auth_settings_page() {
+ function steam_auth_settings_page() {
     $notification = '';
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
         $notification = '<div class="notice notice-success is-dismissible"><p>Настройки сохранены.</p></div>';
@@ -1088,7 +1088,7 @@ function steam_auth_settings_page() {
     }
     ?>
     <div class="wrap">
-        <h1>Steam Auth</h1>
+        <h1>Steam Auth <button id="theme-toggle" class="button">Тёмная тема</button></h1>
         <?php echo $notification; ?>
         <div class="nav-tab-wrapper">
             <a href="#general" class="nav-tab nav-tab-active" data-tab="general">Общие</a>

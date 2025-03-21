@@ -1,5 +1,5 @@
 <h2>Очередь на отвязку Discord</h2>
-<table class="wp-list-table widefat fixed striped">
+<table class="wp-list-table widefat fixed"> <!-- Убрал .striped -->
     <thead>
         <tr>
             <th>Пользователь</th>
