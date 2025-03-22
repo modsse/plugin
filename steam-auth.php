@@ -834,8 +834,7 @@ function steam_auth_sanitize_custom_templates($input) {
  * @since 1.0.0
  */
 
-// steam-auth.php, функция steam_auth_settings_page
-function steam_auth_settings_page() {
+ function steam_auth_settings_page() {
     $notification = '';
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
         $notification = '<div class="notice notice-success is-dismissible"><p>Настройки сохранены.</p></div>';
@@ -854,7 +853,6 @@ function steam_auth_settings_page() {
             <a href="#messages" class="nav-tab" data-tab="messages">Сообщения</a>
             <a href="#discord-notifications" class="nav-tab" data-tab="discord-notifications">Discord Notifications</a>
             <a href="#mods" class="nav-tab" data-tab="mods">Моды</a>
-            <a href="#notifications" class="nav-tab" data-tab="notifications">Уведомления</a> <!-- Новая вкладка -->
         </div>
         <div id="tab-content"></div>
 
@@ -1620,16 +1618,24 @@ function mark_message_read($user_id, $message_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    $wpdb->update(
-        $table_name,
-        ['is_read' => 1],
-        ['id' => $message_id, 'user_id' => $user_id],
-        ['%d'],
-        ['%d', '%d']
-    );
+    $message = $wpdb->get_row($wpdb->prepare(
+        "SELECT user_id FROM $table_name WHERE id = %d",
+        $message_id
+    ));
 
-    if ($wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Сообщение $message_id помечено как прочитанное для пользователя $user_id");
+    if ($message) {
+        if ((int)$message->user_id === (int)$user_id || (int)$message->user_id === 0) {
+            $wpdb->update(
+                $table_name,
+                ['is_read' => 1],
+                ['id' => $message_id],
+                ['%d'],
+                ['%d']
+            );
+            if ($wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
+                error_log("Steam Auth: Сообщение $message_id помечено как прочитанное для пользователя $user_id");
+            }
+        }
     }
 }
 
@@ -1819,32 +1825,6 @@ function steam_auth_create_logs_table() {
     dbDelta( $sql );
 }
 
-function steam_auth_create_notifications_table() {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'steam_auth_notifications';
-    $charset_collate = $wpdb->get_charset_collate();
-
-    $sql = "CREATE TABLE $table_name (
-        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-        title VARCHAR(255) NOT NULL,
-        content TEXT NOT NULL,
-        bg_color VARCHAR(7) NOT NULL DEFAULT '#344703',  -- Исправлено на 6 символов + '#'
-        text_color VARCHAR(7) NOT NULL DEFAULT '#ffffff',
-        role VARCHAR(50) DEFAULT '',
-        user_id BIGINT(20) UNSIGNED DEFAULT 0,
-        is_active TINYINT(1) DEFAULT 1,
-        date_created DATETIME DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id)
-    ) $charset_collate;";
-
-    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    dbDelta($sql);
-
-    if (get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Таблица $table_name создана или обновлена");
-    }
-}
-
 // Функция для создания таблицы сообщений
 function steam_auth_create_messages_table() {
     global $wpdb;
@@ -1875,20 +1855,17 @@ function steam_auth_create_messages_table() {
 }
 
 
+// Проверка и создание таблицы при загрузке плагина
 function steam_auth_check_tables() {
     global $wpdb;
     $logs_table = $wpdb->prefix . 'steam_auth_logs';
     $messages_table = $wpdb->prefix . 'steam_auth_messages';
-    $notifications_table = $wpdb->prefix . 'steam_auth_notifications';
 
     if ($wpdb->get_var("SHOW TABLES LIKE '$logs_table'") != $logs_table) {
         steam_auth_create_logs_table();
     }
     if ($wpdb->get_var("SHOW TABLES LIKE '$messages_table'") != $messages_table) {
         steam_auth_create_messages_table();
-    }
-    if ($wpdb->get_var("SHOW TABLES LIKE '$notifications_table'") != $notifications_table) {
-        steam_auth_create_notifications_table();
     }
 }
 
@@ -2104,23 +2081,5 @@ function get_message_categories() {
 
     $categories = $wpdb->get_col("SELECT DISTINCT category FROM $table_name WHERE category != '' ORDER BY category");
     return $categories;
-}
-
-add_action('wp_ajax_close_notification', 'steam_auth_close_notification');
-function steam_auth_close_notification() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $notification_id = absint($_POST['notification_id']);
-    $user_id = get_current_user_id();
-
-    $closed_notifications = get_option('steam_auth_closed_notifications', []);
-    if (!isset($closed_notifications[$user_id])) {
-        $closed_notifications[$user_id] = [];
-    }
-    if (!in_array($notification_id, $closed_notifications[$user_id])) {
-        $closed_notifications[$user_id][] = $notification_id;
-        update_option('steam_auth_closed_notifications', $closed_notifications);
-    }
-
-    wp_send_json_success('Уведомление закрыто');
 }
 ?>

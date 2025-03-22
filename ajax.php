@@ -20,6 +20,7 @@ function steam_auth_admin_load_tab() {
     $admin_key = get_option('steam_auth_admin_key', '');
     
     $profile_settings = get_option('steam_profile_settings', []);
+    //$logs = get_option('steam_auth_logs', []);
     $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
     $roles = wp_roles()->get_names();
 
@@ -43,13 +44,9 @@ function steam_auth_admin_load_tab() {
     } elseif ($tab === 'mods') {
         $discord_roles = fetch_discord_roles();
         $mods_config = get_option('steam_auth_mods_config', []);
+        // Добавляем массив выбранных ролей для модов
         $selected_mod_roles = isset($mods_config['selected_roles']) ? $mods_config['selected_roles'] : [];
         require __DIR__ . '/templates/mods.php';
-    } elseif ($tab === 'notifications') { // Новая вкладка
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'steam_auth_notifications';
-        $notifications = $wpdb->get_results("SELECT * FROM $table_name ORDER BY date_created DESC");
-        require __DIR__ . '/templates/notifications.php';
     }
     echo ob_get_clean();
     wp_die();
@@ -820,64 +817,6 @@ function steam_auth_delete_category() {
         }
         wp_send_json_success('Категория удалена');
     }
-}
-
-add_action('wp_ajax_steam_auth_save_notification', 'steam_auth_save_notification');
-function steam_auth_save_notification() {
-    check_ajax_referer('steam_auth_nonce', 'nonce');
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Недостаточно прав');
-    }
-
-    $title = sanitize_text_field($_POST['title']);
-    $content = wp_kses_post($_POST['content']);
-    $bg_color = sanitize_hex_color($_POST['bg_color'] ?? '#3447003');
-    $text_color = sanitize_hex_color($_POST['text_color'] ?? '#ffffff');
-    $role = sanitize_text_field($_POST['role'] ?? '');
-    $user_id = absint($_POST['user_id'] ?? 0);
-
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'steam_auth_notifications';
-
-    $wpdb->insert(
-        $table_name,
-        [
-            'title' => $title,
-            'content' => $content,
-            'bg_color' => $bg_color,
-            'text_color' => $text_color,
-            'role' => $role,
-            'user_id' => $user_id,
-            'is_active' => 1,
-        ]
-    );
-
-    if ($wpdb->insert_id) {
-        wp_send_json_success('Уведомление добавлено');
-    } else {
-        wp_send_json_error('Ошибка при добавлении уведомления');
-    }
-}
-
-add_action('wp_ajax_steam_auth_toggle_notification', 'steam_auth_toggle_notification');
-function steam_auth_toggle_notification() {
-    check_ajax_referer('steam_auth_nonce', 'nonce');
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Недостаточно прав');
-    }
-
-    global $wpdb;
-    $id = absint($_POST['id']);
-    $is_active = absint($_POST['is_active']);
-    $table_name = $wpdb->prefix . 'steam_auth_notifications';
-
-    $wpdb->update(
-        $table_name,
-        ['is_active' => $is_active],
-        ['id' => $id]
-    );
-
-    wp_send_json_success('Статус обновлён');
 }
 
 ?>

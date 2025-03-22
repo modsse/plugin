@@ -1,21 +1,6 @@
 <?php
 // user_profile.php
 defined('ABSPATH') or die('No direct access allowed');
-
-global $wpdb;
-$user_id = get_current_user_id();
-$user_roles = wp_get_current_user()->roles;
-$table_name = $wpdb->prefix . 'steam_auth_notifications';
-
-$notifications = $wpdb->get_results(
-    $wpdb->prepare(
-        "SELECT * FROM $table_name WHERE is_active = 1 AND (user_id = %d OR user_id = 0 OR role IN ('" . implode("','", $user_roles) . "'))",
-        $user_id
-    )
-);
-
-$closed_notifications = get_option('steam_auth_closed_notifications', []);
-$user_closed = $closed_notifications[$user_id] ?? [];
 ?>
 
 <div class="steam-dashboard" style="max-width: none; width: 100%; margin: 0; padding: 0;">
@@ -48,7 +33,6 @@ $user_closed = $closed_notifications[$user_id] ?? [];
     </div>
 
     <div class="dashboard-content" id="dashboard-content">
-        
         <!-- Контент будет загружаться через AJAX -->
         <?php
         $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'profile';
