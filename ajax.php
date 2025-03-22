@@ -661,21 +661,29 @@ function steam_auth_bulk_delete_messages() {
     check_ajax_referer('steam_auth_nonce', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error('Недостаточно прав');
 
-    $message_ids = isset($_POST['message_ids']) ? array_map('sanitize_text_field', (array)$_POST['message_ids']) : [];
+    $message_ids = isset($_POST['message_ids']) ? array_map('intval', (array)$_POST['message_ids']) : [];
     if (empty($message_ids)) wp_send_json_error('Не выбраны сообщения для удаления');
 
-    $all_messages = get_option('steam_auth_messages', []);
-    $updated_messages = array_filter($all_messages, function($message) use ($message_ids) {
-        if (in_array($message['id'], $message_ids)) {
-            $users = $message['user_id'] == 0 ? get_users($message['role'] ? ['role' => $message['role']] : []) : [get_userdata($message['user_id'])];
-            foreach ($users as $user) delete_user_meta($user->ID, 'steam_message_read_' . $message['id']);
-            return false;
-        }
-        return true;
-    });
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    update_option('steam_auth_messages', array_values($updated_messages));
-    wp_send_json_success('Сообщения удалены');
+    // Удаляем сообщения из базы данных
+    $placeholders = implode(',', array_fill(0, count($message_ids), '%d'));
+    $deleted = $wpdb->query($wpdb->prepare(
+        "DELETE FROM $table_name WHERE id IN ($placeholders)",
+        $message_ids
+    ));
+
+    if ($deleted === false) {
+        wp_send_json_error('Ошибка при удалении сообщений: ' . $wpdb->last_error);
+    } elseif ($deleted > 0) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Удалено $deleted сообщений из таблицы $table_name");
+        }
+        wp_send_json_success('Сообщения удалены');
+    } else {
+        wp_send_json_error('Сообщения не найдены');
+    }
 }
 
 add_action('wp_ajax_steam_auth_get_unread_count', 'steam_auth_get_unread_count');
@@ -705,6 +713,88 @@ function steam_auth_remove_general_field() {
         wp_send_json_success('Общее поле удалено');
     } else {
         wp_send_json_error('Поле не найдено');
+    }
+}
+
+// Добавление новой категории
+add_action('wp_ajax_steam_auth_add_category', 'steam_auth_add_category');
+function steam_auth_add_category() {
+    check_ajax_referer('steam_auth_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Недостаточно прав');
+
+    $category = sanitize_text_field($_POST['category']);
+    if (empty($category)) wp_send_json_error('Название категории не может быть пустым');
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_messages';
+    $existing = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE category = %s", $category));
+    if ($existing > 0) wp_send_json_error('Категория уже существует');
+
+    // Категория будет добавлена автоматически при создании первого сообщения с ней
+    wp_send_json_success('Категория добавлена');
+}
+
+// Редактирование категории
+add_action('wp_ajax_steam_auth_edit_category', 'steam_auth_edit_category');
+function steam_auth_edit_category() {
+    check_ajax_referer('steam_auth_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Недостаточно прав');
+
+    $old_category = sanitize_text_field($_POST['old_category']);
+    $new_category = sanitize_text_field($_POST['new_category']);
+    if (empty($new_category)) wp_send_json_error('Новое название категории не может быть пустым');
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_messages';
+    $existing = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE category = %s", $new_category));
+    if ($existing > 0 && $old_category !== $new_category) wp_send_json_error('Категория с таким названием уже существует');
+
+    $updated = $wpdb->update(
+        $table_name,
+        ['category' => $new_category],
+        ['category' => $old_category],
+        ['%s'],
+        ['%s']
+    );
+
+    if ($updated === false) {
+        wp_send_json_error('Ошибка при обновлении категории: ' . $wpdb->last_error);
+    } else {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Категория '$old_category' изменена на '$new_category'");
+        }
+        wp_send_json_success('Категория обновлена');
+    }
+}
+
+// Удаление категории
+add_action('wp_ajax_steam_auth_delete_category', 'steam_auth_delete_category');
+function steam_auth_delete_category() {
+    check_ajax_referer('steam_auth_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error('Недостаточно прав');
+
+    $category = sanitize_text_field($_POST['category']);
+    if (empty($category)) wp_send_json_error('Категория не указана');
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'steam_auth_messages';
+
+    // Перемещаем сообщения из удаляемой категории в "general"
+    $updated = $wpdb->update(
+        $table_name,
+        ['category' => 'general'],
+        ['category' => $category],
+        ['%s'],
+        ['%s']
+    );
+
+    if ($updated === false) {
+        wp_send_json_error('Ошибка при удалении категории: ' . $wpdb->last_error);
+    } else {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Категория '$category' удалена, сообщения перемещены в 'general'");
+        }
+        wp_send_json_success('Категория удалена');
     }
 }
 

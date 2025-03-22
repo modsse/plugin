@@ -333,6 +333,137 @@ jQuery(document).ready(function($) {
         });
     });
 
+    // Пагинация (перехватываем клики по ссылкам пагинации)
+    $(document).on('click', '.tablenav-pages a', function(e) {
+        e.preventDefault();
+        const href = $(this).attr('href');
+        loadTab('messages', href); // Передаём URL с параметром paged
+    });
+
+    // Показываем поле для новой категории
+    $(document).on('change', '#message-category', function() {
+        if ($(this).val() === 'new_category') {
+            $('#new-category-field').show();
+        } else {
+            $('#new-category-field').hide();
+        }
+    });
+
+    // Добавление новой категории
+    $(document).on('click', '#add-new-category', function() {
+        const newCategory = $('#new-category-input').val().trim();
+        if (!newCategory) {
+            showNotification('Введите название категории', 'error');
+            return;
+        }
+
+        $.ajax({
+            url: steamAuthAjax.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'steam_auth_add_category',
+                category: newCategory,
+                nonce: steamAuthAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#message-category').append(`<option value="${newCategory}">${newCategory.charAt(0).toUpperCase() + newCategory.slice(1)}</option>`);
+                    $('#message-category').val(newCategory);
+                    $('#new-category-field').hide();
+                    $('#new-category-input').val('');
+                    $('#category-list').append(`
+                        <tr data-category="${newCategory}">
+                            <td>${newCategory.charAt(0).toUpperCase() + newCategory.slice(1)}</td>
+                            <td>
+                                <a href="#" class="edit-category" data-category="${newCategory}">Редактировать</a> |
+                                <a href="#" class="delete-category" data-category="${newCategory}">Удалить</a>
+                            </td>
+                        </tr>
+                    `);
+                    showNotification('Категория добавлена', 'success');
+                } else {
+                    showNotification('Ошибка: ' + response.data, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Ошибка AJAX:', status, error);
+                showNotification('Ошибка AJAX', 'error');
+            }
+        });
+    });
+
+    // Редактирование категории
+    $(document).on('click', '.edit-category', function(e) {
+        e.preventDefault();
+        const oldCategory = $(this).data('category');
+        const newCategory = prompt('Введите новое название категории:', oldCategory);
+        if (!newCategory || newCategory === oldCategory) return;
+
+        $.ajax({
+            url: steamAuthAjax.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'steam_auth_edit_category',
+                old_category: oldCategory,
+                new_category: newCategory,
+                nonce: steamAuthAjax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $(`tr[data-category="${oldCategory}"]`).replaceWith(`
+                        <tr data-category="${newCategory}">
+                            <td>${newCategory.charAt(0).toUpperCase() + newCategory.slice(1)}</td>
+                            <td>
+                                <a href="#" class="edit-category" data-category="${newCategory}">Редактировать</a> |
+                                <a href="#" class="delete-category" data-category="${newCategory}">Удалить</a>
+                            </td>
+                        </tr>
+                    `);
+                    $(`#message-category option[value="${oldCategory}"]`).replaceWith(`<option value="${newCategory}">${newCategory.charAt(0).toUpperCase() + newCategory.slice(1)}</option>`);
+                    showNotification('Категория обновлена', 'success');
+                } else {
+                    showNotification('Ошибка: ' + response.data, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Ошибка AJAX:', status, error);
+                showNotification('Ошибка AJAX', 'error');
+            }
+        });
+    });
+
+    // Удаление категории
+    $(document).on('click', '.delete-category', function(e) {
+        e.preventDefault();
+        const category = $(this).data('category');
+        showConfirmModal('Вы уверены, что хотите удалить категорию "' + category + '"? Сообщения с этой категорией будут перемещены в "general".', function(confirmed) {
+            if (confirmed) {
+                $.ajax({
+                    url: steamAuthAjax.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'steam_auth_delete_category',
+                        category: category,
+                        nonce: steamAuthAjax.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $(`tr[data-category="${category}"]`).remove();
+                            $(`#message-category option[value="${category}"]`).remove();
+                            showNotification('Категория удалена', 'success');
+                        } else {
+                            showNotification('Ошибка: ' + response.data, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Ошибка AJAX:', status, error);
+                        showNotification('Ошибка AJAX', 'error');
+                    }
+                });
+            }
+        });
+    });
+
     // Добавляем обработчики для массового удаления сообщений
     $(document).on('change', '#select-all-messages', function() {
         if (steamAuthAjax.debug) console.log('Чекбокс "Выбрать все" изменён:', this.checked);
@@ -878,15 +1009,17 @@ jQuery(document).ready(function($) {
     const tabs = document.querySelectorAll('.nav-tab');
     const content = document.getElementById('tab-content');
 
-    function loadTab(tab) {
-        if (steamAuthAjax.debug) console.log('Загрузка вкладки:', tab);
-        $.post(steamAuthAjax.ajaxurl, {
+    // Обновляем функцию loadTab для поддержки дополнительных параметров
+    function loadTab(tab, url = null) {
+        if (steamAuthAjax.debug) console.log('Загрузка вкладки:', tab, 'URL:', url);
+        const data = {
             action: 'steam_auth_admin_load_tab',
             tab: tab,
             nonce: steamAuthAjax.nonce
-        }, function(response) {
+        };
+        $.post(url || steamAuthAjax.ajaxurl, data, function(response) {
             if (steamAuthAjax.debug) console.log('Ответ сервера получен для вкладки', tab);
-            content.innerHTML = response;
+            $('#tab-content').html(response);
             $(document).trigger('steam_auth_tab_loaded', [tab]);
         }).fail(function(xhr, status, error) {
             console.error('Ошибка AJAX:', status, error);

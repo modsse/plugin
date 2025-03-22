@@ -1,12 +1,35 @@
 <?php
+global $wpdb;
 $users = get_users(['fields' => ['ID', 'user_login']]);
 $roles = wp_roles()->get_names();
-$all_messages = get_option('steam_auth_messages', []);
+$table_name = $wpdb->prefix . 'steam_auth_messages';
+
+// Настройки пагинации
+$per_page = 20; // Количество сообщений на странице
+$page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+$offset = ($page - 1) * $per_page;
+
+// Получаем общее количество сообщений
+$total_messages = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+$total_pages = ceil($total_messages / $per_page);
+
+// Получаем сообщения для текущей страницы
+$all_messages = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT * FROM $table_name ORDER BY date DESC LIMIT %d OFFSET %d",
+        $per_page,
+        $offset
+    ),
+    ARRAY_A
+);
+
+// Получаем все уникальные категории из базы данных
+$categories = $wpdb->get_col("SELECT DISTINCT category FROM $table_name WHERE category != '' ORDER BY category");
 ?>
 
-<h2>Сообщения</h2>
+<h2>Сообщения (<?php echo $total_messages; ?>)</h2>
 <form id="steam-messages-form" method="post">
-    <table class="wp-list-table widefat fixed"> <!-- Убрал .striped -->
+    <table class="wp-list-table widefat fixed">
         <thead>
             <tr>
                 <th scope="col" style="width: 30px;"><input type="checkbox" id="select-all-messages"></th>
@@ -45,6 +68,24 @@ $all_messages = get_option('steam_auth_messages', []);
     <p class="submit">
         <button type="button" id="bulk-delete-messages" class="button button-primary" disabled>Удалить выбранные</button>
     </p>
+
+    <?php if ($total_pages > 1): ?>
+        <div class="tablenav">
+            <div class="tablenav-pages">
+                <?php
+                $pagination_args = [
+                    'base' => add_query_arg('paged', '%#%'),
+                    'format' => '',
+                    'total' => $total_pages,
+                    'current' => $page,
+                    'prev_text' => __('&laquo; Назад'),
+                    'next_text' => __('Вперед &raquo;'),
+                ];
+                echo paginate_links($pagination_args);
+                ?>
+            </div>
+        </div>
+    <?php endif; ?>
 </form>
 
 <h3>Отправить новое сообщение</h3>
@@ -77,11 +118,15 @@ $all_messages = get_option('steam_auth_messages', []);
             <th><label for="message-category">Категория</label></th>
             <td>
                 <select name="category" id="message-category" class="regular-text">
-                    <option value="general">Общее</option>
-                    <option value="news">Новости</option>
-                    <option value="alert">Оповещения</option>
-                    <option value="personal">Личные</option>
+                    <?php foreach ($categories as $category): ?>
+                        <option value="<?php echo esc_attr($category); ?>"><?php echo esc_html(ucfirst($category)); ?></option>
+                    <?php endforeach; ?>
+                    <option value="new_category">Добавить новую категорию...</option>
                 </select>
+                <div id="new-category-field" style="display: none; margin-top: 10px;">
+                    <input type="text" id="new-category-input" class="regular-text" placeholder="Введите название новой категории">
+                    <button type="button" id="add-new-category" class="button">Добавить</button>
+                </div>
             </td>
         </tr>
         <tr>
@@ -111,7 +156,30 @@ $all_messages = get_option('steam_auth_messages', []);
         </tr>
     </table>
     <p class="submit">
-    <input type="submit" class="button-primary" value="Отправить сообщение" />
-    <span class="loading-spinner" id="save-spinner" style="display: none;"></span>
-</p>
+        <input type="submit" class="button-primary" value="Отправить сообщение" />
+        <span class="loading-spinner" id="save-spinner" style="display: none;"></span>
+    </p>
 </form>
+
+<h3>Управление категориями</h3>
+<div id="category-management">
+    <table class="wp-list-table widefat fixed">
+        <thead>
+            <tr>
+                <th scope="col">Название</th>
+                <th scope="col">Действия</th>
+            </tr>
+        </thead>
+        <tbody id="category-list">
+            <?php foreach ($categories as $category): ?>
+                <tr data-category="<?php echo esc_attr($category); ?>">
+                    <td><?php echo esc_html(ucfirst($category)); ?></td>
+                    <td>
+                        <a href="#" class="edit-category" data-category="<?php echo esc_attr($category); ?>">Редактировать</a> |
+                        <a href="#" class="delete-category" data-category="<?php echo esc_attr($category); ?>">Удалить</a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
