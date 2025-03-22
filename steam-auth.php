@@ -1817,6 +1817,7 @@ function steam_auth_create_logs_table() {
     dbDelta( $sql );
 }
 
+
 // Функция для создания таблицы сообщений
 function steam_auth_create_messages_table() {
     global $wpdb;

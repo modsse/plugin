@@ -730,8 +730,29 @@ function steam_auth_add_category() {
     $existing = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE category = %s", $category));
     if ($existing > 0) wp_send_json_error('Категория уже существует');
 
-    // Категория будет добавлена автоматически при создании первого сообщения с ней
-    wp_send_json_success('Категория добавлена');
+    // Добавляем категорию как "техническую" запись
+    $wpdb->insert(
+        $table_name,
+        [
+            'user_id' => 0,
+            'role' => '',
+            'title' => 'Создана категория',
+            'content' => 'Категория добавлена через админку',
+            'category' => $category,
+            'date' => current_time('mysql'),
+            'is_read' => 1,
+            'is_deleted' => 1 // Помечаем как удалённое, чтобы не отображалось в списке сообщений
+        ]
+    );
+
+    if ($wpdb->insert_id) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Категория '$category' добавлена в таблицу $table_name");
+        }
+        wp_send_json_success('Категория добавлена');
+    } else {
+        wp_send_json_error('Ошибка при добавлении категории');
+    }
 }
 
 // Редактирование категории
