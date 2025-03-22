@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
+    
+
     // Начальное уведомление
     if (steamProfileData && steamProfileData.notification) {
         showNotification(steamProfileData.notification, steamProfileData.notification.includes('Ошибка'));

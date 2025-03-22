@@ -1266,5 +1266,66 @@ jQuery(document).ready(function($) {
         applyTheme(newTheme);
     });
 
+    $(document).on('submit', '#notification-form', function(e) {
+        e.preventDefault();
+        if (steamAuthAjax.debug) console.log('Отправка формы #notification-form');
+        const $form = $(this);
+        const $submitButton = $form.find('input[type="submit"]');
+        const $saveSpinner = $('#save-spinner');
+    
+        $saveSpinner.show();
+        $submitButton.prop('disabled', true);
+    
+        const data = $form.serialize() + '&action=steam_auth_save_notification&nonce=' + steamAuthAjax.nonce;
+        $.ajax({
+            url: steamAuthAjax.ajaxurl,
+            type: 'POST',
+            data: data,
+            success: function(response) {
+                if (steamAuthAjax.debug) console.log('Ответ сервера:', response);
+                if (response.success) {
+                    showNotification(response.data, 'success');
+                    $form[0].reset();
+                    loadTab('notifications');
+                } else {
+                    showNotification('Ошибка: ' + response.data, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Ошибка AJAX:', status, error);
+                showNotification('Ошибка AJAX', 'error');
+            },
+            complete: function() {
+                $saveSpinner.hide();
+                $submitButton.prop('disabled', false);
+            }
+        });
+    });
+    
+    $(document).on('click', '.toggle-notification', function(e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        const isActive = $(this).data('active') == 1 ? 0 : 1;
+        if (steamAuthAjax.debug) console.log('Переключение статуса уведомления:', id, isActive);
+    
+        $.post(steamAuthAjax.ajaxurl, {
+            action: 'steam_auth_toggle_notification',
+            id: id,
+            is_active: isActive,
+            nonce: steamAuthAjax.nonce
+        }, function(response) {
+            if (steamAuthAjax.debug) console.log('Ответ сервера:', response);
+            if (response.success) {
+                showNotification(response.data, 'success');
+                loadTab('notifications');
+            } else {
+                showNotification('Ошибка: ' + response.data, 'error');
+            }
+        }).fail(function(xhr, status, error) {
+            console.error('Ошибка AJAX:', status, error);
+            showNotification('Ошибка AJAX', 'error');
+        });
+    });
+
     loadTab('general');
 });
