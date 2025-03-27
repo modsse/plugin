@@ -12,6 +12,7 @@ if (!file_exists(__DIR__ . '/lightopenid.php')) {
 
 require_once __DIR__ . '/lightopenid.php';
 require_once __DIR__ . '/ajax.php';
+require_once __DIR__ . '/templates/admin-dashboard.php';
 
 // Подключение стилей
 add_action('wp_enqueue_scripts', 'steam_auth_enqueue_styles');
@@ -33,7 +34,8 @@ add_action('admin_enqueue_scripts', function($hook) {
             'nonce' => wp_create_nonce('steam_auth_nonce'),
             'debug' => get_option('steam_auth_debug', false) ? true : false,
             'home_url' => home_url(),
-            'customTemplates' => get_option('steam_auth_discord_custom_templates', [])
+            'customTemplates' => get_option('steam_auth_discord_custom_templates', []),
+            'ticket_auto_delete_days' => get_option('steam_auth_ticket_auto_delete_days', 0),
         ]);
         if (get_option('steam_auth_debug', false)) {
             error_log("Steam Auth: Скрипты и стили подключены для $hook");
@@ -41,22 +43,19 @@ add_action('admin_enqueue_scripts', function($hook) {
     }
 });
 
-// Подключаем только стили для фронтенда
-add_action('wp_enqueue_scripts', function() {
+add_action('wp_enqueue_scripts', 'steam_auth_enqueue_assets');
+function steam_auth_enqueue_assets() {
+    wp_enqueue_style('steam-auth-style', plugin_dir_url(__FILE__) . 'css/user_main.css', [], filemtime(plugin_dir_path(__FILE__) . 'css/user_main.css'));
     wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
-});
-
-add_action('wp_enqueue_scripts', 'steam_auth_enqueue_scripts');
-function steam_auth_enqueue_scripts() {
     wp_enqueue_script('steam-auth-frontend', plugin_dir_url(__FILE__) . 'js/frontend.js', [], '2.10.2', true);
     wp_localize_script('steam-auth-frontend', 'steamAuth', [
         'loginUrl' => wp_nonce_url(home_url('/steam-login'), 'steam_login_nonce'),
         'debug' => get_option('steam_auth_debug', false) ? true : false
     ]);
-    // Локализация steamAuthAjax для AJAX-запросов
     wp_localize_script('steam-auth-frontend', 'steamAuthAjax', [
         'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('steam_auth_nonce')
+        'nonce' => wp_create_nonce('steam_auth_nonce'),
+        'ticket_auto_delete_days' => get_option('steam_auth_ticket_auto_delete_days', 0),
     ]);
 }
 
@@ -137,7 +136,7 @@ function get_steam_user_data($steam_id) {
 }
 
 // Логирование действий
-function log_steam_action($steam_id, $action, $discord_id = '', $discord_username = '', $error = '') {
+function log_steam_action($steam_id, $action, $discord_id = '', $discord_username = '', $error = '', $extra_data = []) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
     $log_limit = (int) get_option('steam_auth_log_limit', 50);
@@ -155,7 +154,7 @@ function log_steam_action($steam_id, $action, $discord_id = '', $discord_usernam
         )
     );
 
-    // Ограничение количества записей (удаляем старые, если превышен лимит)
+    // Ограничение количества записей
     $total_logs = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
     if ($total_logs > $log_limit) {
         $wpdb->query($wpdb->prepare(
@@ -173,6 +172,11 @@ function log_steam_action($steam_id, $action, $discord_id = '', $discord_usernam
     if ($discord_id) $data['discord_id'] = $discord_id;
     if ($discord_username) $data['discord_username'] = $discord_username;
     if ($error) $data['error'] = $error;
+
+    // Добавляем дополнительные данные, если они переданы
+    if (!empty($extra_data)) {
+        $data = array_merge($data, $extra_data);
+    }
 
     $args = [
         'body' => json_encode($data),
@@ -308,111 +312,111 @@ function steam_profile_shortcode() {
         return 'fas';
     }
     // Начало сессии
-if (!session_id()) {
-    session_start();
-}
+    if (!session_id()) {
+        session_start();
+    }
 
-// Уведомления
-$transient_key = 'steam_profile_notification_' . $user_id;
-$notification = isset($_SESSION['steam_profile_notification']) ? $_SESSION['steam_profile_notification'] : get_transient($transient_key);
+    // Уведомления
+    $transient_key = 'steam_profile_notification_' . $user_id;
+    $notification = isset($_SESSION['steam_profile_notification']) ? $_SESSION['steam_profile_notification'] : get_transient($transient_key);
 
-// Обработка GET-параметров для уведомлений
-if (isset($_GET['discord_success'])) {
-    $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_success'])) . '</p>';
-    $_SESSION['steam_profile_notification'] = $notification;
-} elseif (isset($_GET['discord_unlink_success'])) {
-    $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_unlink_success'])) . '</p>';
-    $_SESSION['steam_profile_notification'] = $notification;
-} elseif (isset($_GET['discord_error'])) {
-    $notification = '<p class="error">' . esc_html(urldecode($_GET['discord_error'])) . '</p>';
-    $_SESSION['steam_profile_notification'] = $notification;
-    add_user_message($user_id, '', 'Ошибка Discord', urldecode($_GET['discord_error']));
-}
+    // Обработка GET-параметров для уведомлений
+    if (isset($_GET['discord_success'])) {
+        $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_success'])) . '</p>';
+        $_SESSION['steam_profile_notification'] = $notification;
+    } elseif (isset($_GET['discord_unlink_success'])) {
+        $notification = '<p class="success">' . esc_html(urldecode($_GET['discord_unlink_success'])) . '</p>';
+        $_SESSION['steam_profile_notification'] = $notification;
+    } elseif (isset($_GET['discord_error'])) {
+        $notification = '<p class="error">' . esc_html(urldecode($_GET['discord_error'])) . '</p>';
+        $_SESSION['steam_profile_notification'] = $notification;
+        add_user_message($user_id, '', 'Ошибка Discord', urldecode($_GET['discord_error']));
+    }
 
-// После обработки формы редактирования
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['steam_edit_profile_action']) && wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
-    $updated_data = [];
-    $errors = [];
+    // После обработки формы редактирования
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['steam_edit_profile_action']) && wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
+        $updated_data = [];
+        $errors = [];
 
-    foreach ($profile_settings['fields'] as $field => $settings) {
-        if ($settings['editable'] && isset($_POST[$field])) {
-            $value = sanitize_text_field($_POST[$field]);
-            if ($field === 'user_email' && !is_email($value)) {
-                $errors[] = 'Некорректный email';
-            } else {
-                $updated_data[$field] = $value;
+        foreach ($profile_settings['fields'] as $field => $settings) {
+            if ($settings['editable'] && isset($_POST[$field])) {
+                $value = sanitize_text_field($_POST[$field]);
+                if ($field === 'user_email' && !is_email($value)) {
+                    $errors[] = 'Некорректный email';
+                } else {
+                    $updated_data[$field] = $value;
+                }
             }
         }
-    }
 
-    if (empty($errors)) {
-        $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
-        if (is_wp_error($updated)) {
-            $notification = '<p class="error">Ошибка: ' . $updated->get_error_message() . '</p>';
+        if (empty($errors)) {
+            $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
+            if (is_wp_error($updated)) {
+                $notification = '<p class="error">Ошибка: ' . $updated->get_error_message() . '</p>';
+            } else {
+                $notification = '<p class="success">Профиль обновлён!</p>';
+                $user_email = isset($updated_data['user_email']) ? $updated_data['user_email'] : $user_email;
+                $display_name = isset($updated_data['display_name']) ? $updated_data['display_name'] : $display_name;
+            }
+            $_SESSION['steam_profile_notification'] = $notification;
+            wp_redirect(remove_query_arg('edit'));
+            exit;
         } else {
-            $notification = '<p class="success">Профиль обновлён!</p>';
-            $user_email = isset($updated_data['user_email']) ? $updated_data['user_email'] : $user_email;
-            $display_name = isset($updated_data['display_name']) ? $updated_data['display_name'] : $display_name;
+            $notification = '<p class="error">' . implode('<br>', $errors) . '</p>';
+            $_SESSION['steam_profile_notification'] = $notification;
         }
-        $_SESSION['steam_profile_notification'] = $notification;
-        wp_redirect(remove_query_arg('edit'));
-        exit;
-    } else {
-        $notification = '<p class="error">' . implode('<br>', $errors) . '</p>';
-        $_SESSION['steam_profile_notification'] = $notification;
-    }
-}
-
-// Очистка уведомления после отображения
-if ($notification && !isset($_GET['discord_success']) && !isset($_GET['discord_unlink_success']) && !isset($_GET['discord_error'])) {
-    unset($_SESSION['steam_profile_notification']);
-    delete_transient($transient_key);
-}
-
-    if (isset($_GET['action']) && $_GET['action'] === 'mark_read' && isset($_GET['message_id'])) {
-        $message_id = sanitize_text_field($_GET['message_id']);
-        mark_message_read($user_id, $message_id);
-        wp_redirect(remove_query_arg(['action', 'message_id'], add_query_arg('tab', 'messages')));
-        exit;
     }
 
-    if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['message_id'])) {
-        $message_id = sanitize_text_field($_GET['message_id']);
-        delete_user_message($user_id, $message_id);
-        wp_redirect(remove_query_arg(['action', 'message_id'], add_query_arg('tab', 'messages')));
-        exit;
-    }
+        // Очистка уведомления после отображения
+        if ($notification && !isset($_GET['discord_success']) && !isset($_GET['discord_unlink_success']) && !isset($_GET['discord_error'])) {
+        unset($_SESSION['steam_profile_notification']);
+        delete_transient($transient_key);
+        }
 
-    if (isset($_GET['action']) && $_GET['action'] === 'delete_all_read') {
-        delete_all_read_messages($user_id);
-        wp_redirect(remove_query_arg(['action'], add_query_arg('tab', 'messages')));
-        exit;
-    }
+        if (isset($_GET['action']) && $_GET['action'] === 'mark_read' && isset($_GET['message_id'])) {
+            $message_id = sanitize_text_field($_GET['message_id']);
+            mark_message_read($user_id, $message_id);
+            wp_redirect(remove_query_arg(['action', 'message_id'], add_query_arg('tab', 'messages')));
+            exit;
+        }
 
-    if (isset($_GET['action']) && $_GET['action'] === 'delete_all') {
-        delete_all_messages($user_id);
-        wp_redirect(remove_query_arg(['action'], add_query_arg('tab', 'messages')));
-        exit;
-    }
+        if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['message_id'])) {
+            $message_id = sanitize_text_field($_GET['message_id']);
+            delete_user_message($user_id, $message_id);
+            wp_redirect(remove_query_arg(['action', 'message_id'], add_query_arg('tab', 'messages')));
+            exit;
+        }
 
-    ob_start();
-    require_once plugin_dir_path(__FILE__) . 'user_profile.php';
-    $output = ob_get_clean();
+        if (isset($_GET['action']) && $_GET['action'] === 'delete_all_read') {
+            delete_all_read_messages($user_id);
+            wp_redirect(remove_query_arg(['action'], add_query_arg('tab', 'messages')));
+            exit;
+        }
 
-    if (get_option('steam_auth_debug', false)) {
-        error_log("Steam Profile: Вкладка - $tab, Is Editing - " . ($is_editing ? 'true' : 'false') . ", Steam ID - $steam_id, Вывод - " . substr($output, 0, 200));
-    }
+        if (isset($_GET['action']) && $_GET['action'] === 'delete_all') {
+            delete_all_messages($user_id);
+            wp_redirect(remove_query_arg(['action'], add_query_arg('tab', 'messages')));
+            exit;
+        }
 
-    wp_enqueue_script('steam-auth-profile', plugins_url('js/profile.js', __FILE__), [], '2.10.2', true);
-    wp_localize_script('steam-auth-profile', 'steamProfileData', [
-        'notification' => $notification,
-        'debug' => get_option('steam_auth_debug', false) ? true : false,
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('steam_profile_nonce'),
-        'tab' => $tab
-    ]);
+        ob_start();
+        require_once plugin_dir_path(__FILE__) . 'user_profile.php';
+        $output = ob_get_clean();
 
-    return $output;
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Profile: Вкладка - $tab, Is Editing - " . ($is_editing ? 'true' : 'false') . ", Steam ID - $steam_id, Вывод - " . substr($output, 0, 200));
+        }
+
+        wp_enqueue_script('steam-auth-profile', plugins_url('js/profile.js', __FILE__), [], '2.10.2', true);
+        wp_localize_script('steam-auth-profile', 'steamProfileData', [
+            'notification' => $notification,
+            'debug' => get_option('steam_auth_debug', false) ? true : false,
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('steam_profile_nonce'),
+            'tab' => $tab
+        ]);
+
+        return $output;
 }
 
 // Обработка привязки Discord
@@ -532,7 +536,6 @@ function handle_discord_callback() {
     }
 }
 // Обработка отвязки Discord
-// Обработка отвязки Discord
 add_action('wp', 'handle_discord_unlink');
 function handle_discord_unlink() {
     if (strpos($_SERVER['REQUEST_URI'], '/discord-unlink') === false || !is_user_logged_in()) {
@@ -584,8 +587,6 @@ function handle_discord_unlink() {
     wp_redirect(home_url('/user'));
     exit;
 }
-
-
 
 add_action('admin_menu', 'steam_auth_settings_menu');
 function steam_auth_settings_menu() {
@@ -645,6 +646,28 @@ function steam_auth_register_settings() {
         'sanitize_callback' => 'intval',
         'default' => 50
     ]);
+    register_setting('steam_auth_options', 'steam_auth_allow_user_delete_messages', [
+        'sanitize_callback' => 'boolval',
+        'default' => false
+    ]);
+    register_setting('steam_auth_options', 'steam_auth_tickets_enabled', [
+        'sanitize_callback' => 'boolval',
+        'default' => true
+    ]);
+    register_setting('steam_auth_options', 'steam_auth_ticket_max_file_size', [
+        'sanitize_callback' => 'intval',
+        'default' => 5
+    ]);
+    register_setting('steam_auth_options', 'steam_auth_ticket_allowed_file_types', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => 'jpg,png,pdf'
+    ]);
+
+    register_setting('steam_auth_options', 'steam_auth_ticket_auto_delete_days', [
+        'sanitize_callback' => 'intval',
+        'default' => 30 // 30 дней по умолчанию
+    ]);
+
 
     // Остальные опции
     register_setting('steam_auth_options', 'steam_profile_settings', [
@@ -824,23 +847,16 @@ function steam_auth_sanitize_custom_templates($input) {
     return $output;
 }
 
-
-/**
- * Генерирует страницу настроек для администратора.
- *
- * Функция отображает меню с закладками и контент под ними.
- * Она также отображает уведомления и модальное окно для подтверждения.
- *
- * @since 1.0.0
- */
-
  function steam_auth_settings_page() {
+    global $wpdb; // Добавляем глобальную переменную $wpdb
+
     $notification = '';
     if (isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true') {
         $notification = '<div class="notice notice-success is-dismissible"><p>Настройки сохранены.</p></div>';
     } elseif (isset($_GET['error'])) {
         $notification = '<div class="notice notice-error is-dismissible"><p>Ошибка: ' . esc_html($_GET['error']) . '</p></div>';
     }
+    $new_tickets_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}steam_auth_tickets WHERE status = 'open'");
     ?>
     <div class="wrap">
         <h1>Steam Auth <button id="theme-toggle" class="button">Тёмная тема</button></h1>
@@ -851,6 +867,7 @@ function steam_auth_sanitize_custom_templates($input) {
             <a href="#logs" class="nav-tab" data-tab="logs">Логи</a>
             <a href="#discord-unlink" class="nav-tab" data-tab="discord-unlink">Discord Unlink Requests</a>
             <a href="#messages" class="nav-tab" data-tab="messages">Сообщения</a>
+            <a href="#tickets" class="nav-tab" data-tab="tickets">Тикеты <?php if ($new_tickets_count > 0) echo "($new_tickets_count)"; ?></a>
             <a href="#discord-notifications" class="nav-tab" data-tab="discord-notifications">Discord Notifications</a>
             <a href="#mods" class="nav-tab" data-tab="mods">Моды</a>
         </div>
@@ -920,6 +937,46 @@ add_action('rest_api_init', function () {
         'methods' => 'GET',
         'callback' => 'check_plugin_health',
         'permission_callback' => '__return_true' 
+    ]);
+
+    // Новый маршрут для получения тикетов
+    register_rest_route('steam-auth/v1', '/tickets', [
+        'methods' => 'GET',
+        'callback' => 'steam_auth_get_tickets',
+        'permission_callback' => function () {
+            $api_key = $_GET['api_key'] ?? '';
+            return $api_key === get_option('steam_auth_bot_api_key', '');
+        }
+    ]);
+
+    // Обновление статуса тикета
+    register_rest_route('steam-auth/v1', '/update_ticket_status', [
+        'methods' => 'POST',
+        'callback' => 'update_ticket_status_telegram',
+        'permission_callback' => function ($request) {
+            $api_key = $request->get_param('api_key'); // Получаем api_key из параметров запроса (GET или POST)
+            $stored_key = get_option('steam_auth_bot_api_key', '');
+            $is_valid = $api_key === $stored_key;
+            if (get_option('steam_auth_debug', false)) {
+                error_log("Steam Auth: Проверка API-ключа для /update_ticket_status. Передан: '$api_key', Ожидаем: '$stored_key', Результат: " . ($is_valid ? 'true' : 'false'));
+            }
+            return $is_valid;
+        }
+    ]);
+
+    // Ответ на тикет
+    register_rest_route('steam-auth/v1', '/reply_ticket', [
+        'methods' => 'POST',
+        'callback' => 'admin_reply_ticket_telegram',
+        'permission_callback' => function ($request) {
+            $api_key = $request->get_param('api_key'); // Получаем api_key из параметров запроса (GET или POST)
+            $stored_key = get_option('steam_auth_bot_api_key', '');
+            $is_valid = $api_key === $stored_key;
+            if (get_option('steam_auth_debug', false)) {
+                error_log("Steam Auth: Проверка API-ключа для /update_ticket_status. Передан: '$api_key', Ожидаем: '$stored_key', Результат: " . ($is_valid ? 'true' : 'false'));
+            }
+            return $is_valid;
+        }
     ]);
 
 });
@@ -1038,18 +1095,6 @@ function get_steam_auth_logs_rest($request) {
 
     return array_values($logs);
 }
-
-/**
- * Возвращает статистику по событиям Steam Auth за указанный период.
- *
- * @param WP_REST_Request $request
- * @return array{
- *     'registration' => int,
- *     'authorization' => int,
- *     'discord_link' => int,
- *     'discord_unlink' => int
- * }
- */
 function get_steam_auth_stats($request) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_logs';
@@ -1076,23 +1121,12 @@ function get_steam_auth_stats($request) {
     );
     $logs = $wpdb->get_results($query);
 
-    if ($logs === null) {
-        if (get_option('steam_auth_debug', false)) {
-            error_log("Steam Auth: Ошибка запроса статистики из $table_name: " . $wpdb->last_error);
-        }
-        return [
-            'registration' => 0,
-            'authorization' => 0,
-            'discord_link' => 0,
-            'discord_unlink' => 0
-        ];
-    }
-
     $stats = [
         'registration' => 0,
         'authorization' => 0,
         'discord_link' => 0,
-        'discord_unlink' => 0
+        'discord_unlink' => 0,
+        'ticket_created' => 0 // Добавляем новый ключ
     ];
 
     foreach ($logs as $log) {
@@ -1107,30 +1141,17 @@ function get_steam_auth_stats($request) {
                 $stats['discord_link']++;
                 break;
             case 'discord_unlink':
-            case 'discord_unlink_approved': // Добавляем для полноты
+            case 'discord_unlink_approved':
                 $stats['discord_unlink']++;
+                break;
+            case 'ticket_created':
+                $stats['ticket_created']++;
                 break;
         }
     }
 
-    if (get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Статистика за $period: " . json_encode($stats));
-    }
-
     return $stats;
 }
-
-/**
- * Очищает таблицу логов Steam Auth.
- *
- * Эта функция проверяет существование таблицы логов и очищает её,
- * используя команду TRUNCATE. Если таблица не найдена или происходит
- * ошибка базы данных, возвращает WP_Error. В случае успешной очистки
- * возвращает массив с сообщением об успешной операции.
- *
- * @param WP_REST_Request $request Запрос REST API.
- * @return array|WP_Error Результат операции в виде массива или ошибки.
- */
 
 function clear_steam_auth_logs($request) {
     global $wpdb;
@@ -1155,17 +1176,6 @@ function clear_steam_auth_logs($request) {
 }
 
 add_action('init', 'restrict_wp_login_with_key', 5);
-/**
- * Ограничивает доступ к странице wp-login.php.
- *
- * Эта функция проверяет, является ли текущий запрос к странице
- * wp-login.php, и если да, то проверяет наличие параметра GET 'key'
- * и сравнивает его со значением, сохранённым в настройках
- * 'steam_auth_admin_key'. Если ключи совпадают, то сессия
- * подтверждается, если нет, то редирект на главную страницу.
- *
- * @since 2.10.0
- */
 function restrict_wp_login_with_key() {
     $login_page = 'auth';
     $secret_key = get_option('steam_auth_admin_key', 'secret123');
@@ -1338,19 +1348,6 @@ add_filter('login_message', '__return_empty_string');
 add_action('login_form', '__return_false');
 add_filter('login_display_language_dropdown', '__return_false');
 
-
-/**
- * Добавляет сообщение для пользователя
- *
- * @param int $user_id    ID пользователя, для которого добавляется сообщение. 0 - для всех пользователей.
- * @param string $role    Роль, для которой добавляется сообщение. Если пусто, то для всех ролей.
- * @param string $title   Заголовок сообщения.
- * @param string $content Текст сообщения.
- * @param bool   $send_discord    Отправлять сообщение в Discord?
- * @param string $category  Категория сообщения (например, 'general', 'donate', 'welcome').
- *
- * @return string ID добавленного сообщения.
- */
 function add_user_message($user_id, $role, $title, $content, $send_discord = true, $category = 'general') {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
@@ -1369,51 +1366,28 @@ function add_user_message($user_id, $role, $title, $content, $send_discord = tru
             'category' => $category,
             'date' => current_time('mysql'),
             'is_read' => 0,
-            'is_deleted' => 0
+            'is_deleted' => 0,
+            'original_message_id' => 0
         ]
     );
 
     $message_id = $wpdb->insert_id;
 
-    if ($send_discord) {
-        if ($user_id == 0) {
-            if (get_option('steam_auth_debug', false)) {
-                log_steam_action('system', 'message_broadcast', '', '', "Сообщение для " . ($role ? "роли $role" : "всех") . ": $title");
-            }
-            $users = get_users($role ? ['role' => $role] : []);
-            foreach ($users as $user) {
-                $discord_id = get_user_meta($user->ID, 'discord_id', true);
-                $notifications_enabled = get_user_meta($user->ID, 'discord_notifications_enabled', true);
-                if ($discord_id && $notifications_enabled !== '0') {
-                    send_discord_message($discord_id, $title, $content);
-                }
-            }
-        } else {
-            if (get_option('steam_auth_debug', false)) {
-                log_steam_action("user_$user_id", 'message_sent', '', '', $title);
-            }
-            $discord_id = get_user_meta($user_id, 'discord_id', true);
-            $notifications_enabled = get_user_meta($user_id, 'discord_notifications_enabled', true);
-            if ($discord_id && $notifications_enabled !== '0') {
-                send_discord_message($discord_id, $title, $content);
-            }
+    if ($send_discord && $user_id != 0) {
+        $discord_id = get_user_meta($user_id, 'discord_id', true);
+        $notifications_enabled = get_user_meta($user_id, 'discord_notifications_enabled', true);
+        if ($discord_id && $notifications_enabled !== '0') {
+            send_discord_message($discord_id, $title, $content);
         }
     }
+
+    // if (get_option('steam_auth_debug', false)) {
+    //     log_steam_action($user_id == 0 ? 'system' : "user_$user_id", 'message_added', '', '', "Добавлено сообщение ID $message_id: $title");
+    // }
 
     return $message_id;
 }
 
-
-/**
- * Отправляет сообщение пользователю в Discord.
- *
- * @param int    $discord_id   ID пользователя Discord, которому отправляется сообщение.
- * @param string $message_title Заголовок сообщения.
- * @param string $message_content      Текст сообщения.
- * @param array  $template_settings    Массив с настройками шаблона embed. Если пустой, то используются значения по умолчанию.
- *
- * @return bool Результат отправки сообщения.
- */
 function send_discord_message($discord_id, $message_title, $message_content, $template_settings = null) {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
     if (empty($bot_token)) {
@@ -1532,28 +1506,49 @@ function send_discord_message($discord_id, $message_title, $message_content, $te
     return true;
 }
 
-/**
- * Возвращает массив сообщений Steam Auth, отсортированный в порядке убывания даты создания,
- * для указанного пользователя, отфильтрованных по категории (если указана).
- *
- * @param int    $user_id       ID пользователя, для которого нужно получить сообщения.
- * @param string $category_filter  Фильтр по категории сообщений. Если пуст, то возвращаются все сообщения.
- *
- * @return array Массив сообщений, отсортированный в порядке убывания даты создания.
- */
 function get_user_messages($user_id, $category_filter = '', $per_page = 10, $page = 1) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
     $user = wp_get_current_user();
     $user_role = !empty($user->roles) ? $user->roles[0] : 'subscriber';
-
     $offset = ($page - 1) * $per_page;
 
-    $where = $wpdb->prepare(
-        "WHERE (user_id = %d OR (user_id = 0 AND (role = '' OR role = %s))) AND is_deleted = 0",
+    // Шаг 1: Получаем общие сообщения, которые ещё не скопированы для пользователя
+    $common_messages_query = $wpdb->prepare(
+        "SELECT * FROM $table_name 
+         WHERE user_id = 0 
+         AND is_deleted = 0 
+         AND id NOT IN (
+             SELECT original_message_id FROM $table_name WHERE user_id = %d AND original_message_id != 0
+         )" . (!empty($category_filter) ? " AND category = %s" : ""),
         $user_id,
-        $user_role
+        $category_filter
     );
+    $common_messages = $wpdb->get_results($common_messages_query, ARRAY_A);
+
+    // Шаг 2: Создаём копии общих сообщений для пользователя
+    foreach ($common_messages as $message) {
+        $wpdb->insert(
+            $table_name,
+            [
+                'user_id' => $user_id,
+                'role' => '',
+                'title' => $message['title'],
+                'content' => $message['content'],
+                'category' => $message['category'],
+                'date' => $message['date'],
+                'is_read' => 0,
+                'is_deleted' => 0,
+                'original_message_id' => $message['id']
+            ]
+        );
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Создано сообщение для user_id $user_id из общего ID {$message['id']}");
+        }
+    }
+
+    // Шаг 3: Получаем сообщения пользователя (личные + копии общих)
+    $where = $wpdb->prepare("WHERE user_id = %d AND is_deleted = 0", $user_id);
     if (!empty($category_filter)) {
         $where .= $wpdb->prepare(" AND category = %s", $category_filter);
     }
@@ -1561,7 +1556,7 @@ function get_user_messages($user_id, $category_filter = '', $per_page = 10, $pag
     $total = $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where");
 
     $query = $wpdb->prepare(
-        "SELECT id, user_id, role, title, content, category, date, is_read
+        "SELECT id, user_id, role, title, content, category, date, is_read, original_message_id
          FROM $table_name
          $where
          ORDER BY date DESC
@@ -1570,14 +1565,7 @@ function get_user_messages($user_id, $category_filter = '', $per_page = 10, $pag
         $offset
     );
 
-    $messages = $wpdb->get_results($query, ARRAY_A);
-
-    if ($messages === null) {
-        if (get_option('steam_auth_debug', false)) {
-            error_log("Steam Auth: Ошибка получения сообщений: " . $wpdb->last_error);
-        }
-        $messages = [];
-    }
+    $messages = $wpdb->get_results($query, ARRAY_A) ?: [];
 
     foreach ($messages as &$message) {
         $message['is_read'] = (bool)$message['is_read'];
@@ -1597,17 +1585,14 @@ function steam_auth_get_unread_messages_count($user_id) {
 
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
-    $user = wp_get_current_user();
-    $user_role = !empty($user->roles) ? $user->roles[0] : 'subscriber';
 
     $count = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) 
          FROM $table_name 
-         WHERE (user_id = %d OR (user_id = 0 AND (role = '' OR role = %s))) 
+         WHERE user_id = %d 
          AND is_read = 0 
          AND is_deleted = 0",
-        $user_id,
-        $user_role
+        $user_id
     ));
 
     return (int)$count;
@@ -1618,23 +1603,21 @@ function mark_message_read($user_id, $message_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    $message = $wpdb->get_row($wpdb->prepare(
-        "SELECT user_id FROM $table_name WHERE id = %d",
-        $message_id
-    ));
+    $result = $wpdb->update(
+        $table_name,
+        ['is_read' => 1],
+        ['id' => $message_id, 'user_id' => $user_id],
+        ['%d'],
+        ['%d', '%d']
+    );
 
-    if ($message) {
-        if ((int)$message->user_id === (int)$user_id || (int)$message->user_id === 0) {
-            $wpdb->update(
-                $table_name,
-                ['is_read' => 1],
-                ['id' => $message_id],
-                ['%d'],
-                ['%d']
-            );
-            if ($wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
-                error_log("Steam Auth: Сообщение $message_id помечено как прочитанное для пользователя $user_id");
-            }
+    if ($result === false) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Ошибка при пометке сообщения $message_id как прочитанного для пользователя $user_id: " . $wpdb->last_error);
+        }
+    } elseif ($result > 0) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Сообщение $message_id помечено как прочитанное для пользователя $user_id");
         }
     }
 }
@@ -1643,38 +1626,23 @@ function delete_user_message($user_id, $message_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    $message = $wpdb->get_row($wpdb->prepare(
-        "SELECT user_id FROM $table_name WHERE id = %d",
-        $message_id
-    ));
+    $result = $wpdb->update(
+        $table_name,
+        ['is_deleted' => 1],
+        ['id' => $message_id, 'user_id' => $user_id],
+        ['%d'],
+        ['%d', '%d']
+    );
 
-    if ($message) {
-        if ((int)$message->user_id === (int)$user_id) {
-            $wpdb->delete(
-                $table_name,
-                ['id' => $message_id, 'user_id' => $user_id],
-                ['%d', '%d']
-            );
-        } elseif ((int)$message->user_id === 0) {
-            $wpdb->update(
-                $table_name,
-                ['is_deleted' => 1],
-                ['id' => $message_id, 'user_id' => 0],
-                ['%d'],
-                ['%d', '%d']
-            );
+    if ($result === false) {
+        wp_send_json_error(['message' => 'Ошибка удаления: ' . $wpdb->last_error]);
+    } elseif ($result > 0) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Сообщение $message_id удалено для пользователя $user_id");
         }
-
-        if ($wpdb->rows_affected > 0) {
-            if (get_option('steam_auth_debug', false)) {
-                error_log("Steam Auth: Сообщение $message_id удалено/пометка для пользователя $user_id");
-            }
-            wp_send_json_success(['message' => 'Сообщение удалено']);
-        } else {
-            wp_send_json_error(['message' => 'Сообщение не найдено']);
-        }
+        wp_send_json_success(['message' => 'Сообщение удалено']);
     } else {
-        wp_send_json_error(['message' => 'Сообщение не найдено']);
+        wp_send_json_error(['message' => 'Сообщение не найдено или не принадлежит вам']);
     }
 }
 
@@ -1682,24 +1650,16 @@ function delete_all_messages($user_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    // Удаляем личные сообщения
-    $wpdb->delete(
-        $table_name,
-        ['user_id' => $user_id],
-        ['%d']
-    );
-
-    // Помечаем общие сообщения как удалённые
-    $wpdb->update(
+    $result = $wpdb->update(
         $table_name,
         ['is_deleted' => 1],
-        ['user_id' => 0],
+        ['user_id' => $user_id],
         ['%d'],
         ['%d']
     );
 
-    if ($wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Все сообщения пользователя $user_id обработаны");
+    if ($result !== false && $wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Все сообщения пользователя $user_id помечены как удалённые");
     }
     wp_send_json_success(['message' => 'Все сообщения удалены']);
 }
@@ -1708,45 +1668,23 @@ function delete_all_read_messages($user_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'steam_auth_messages';
 
-    // Удаляем прочитанные личные сообщения
-    $wpdb->delete(
-        $table_name,
-        ['user_id' => $user_id, 'is_read' => 1],
-        ['%d', '%d']
-    );
-
-    // Помечаем прочитанные общие сообщения как удалённые
-    $wpdb->update(
+    $result = $wpdb->update(
         $table_name,
         ['is_deleted' => 1],
-        ['user_id' => 0, 'is_read' => 1],
+        ['user_id' => $user_id, 'is_read' => 1],
         ['%d'],
         ['%d', '%d']
     );
 
-    if ($wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
-        error_log("Steam Auth: Все прочитанные сообщения пользователя $user_id обработаны");
+    if ($result !== false && $wpdb->rows_affected > 0 && get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Все прочитанные сообщения пользователя $user_id помечены как удалённые");
     }
     wp_send_json_success(['message' => 'Все прочитанные сообщения удалены']);
 }
 
-
-/**
- * Получает информацию о членстве пользователя в Discord-сервере.
- *
- * Эта функция делает запрос к Discord API для получения данных о членстве 
- * пользователя с указанным Discord ID на конкретном сервере.
- *
- * @param string $discord_id Discord ID пользователя, для которого необходимо 
- * получить информацию о членстве.
- * 
- * @return array|false Возвращает массив с информацией о членстве пользователя в 
- * Discord-сервере, либо false в случае ошибки или отсутствия токена.
- */
-
 function fetch_discord_membership($discord_id) {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
-    $guild_id = '958141724054671420'; // ID вашего сервера
+    $guild_id = get_option('steam_auth_discord_guild_id', '');
     if (!$bot_token) return false;
 
     $url = "https://discord.com/api/v10/guilds/{$guild_id}/members/{$discord_id}";
@@ -1762,20 +1700,8 @@ function fetch_discord_membership($discord_id) {
     return json_decode(wp_remote_retrieve_body($response), true);
 }
 
-
-/**
- * Получает информацию о ролях на Discord-сервере.
- *
- * Эта функция делает запрос к Discord API для получения данных о ролях на 
- * конкретном сервере. Она кэширует ответ на 1 час, поэтому если вам 
- * необходимо обновить список ролей, то вам нужно очистить кэш.
- *
- * @return array Массив, содержащий информацию о ролях на сервере, 
- * где ключ - ID роли, а значение - массив с информацией о роли.
- */
 function fetch_discord_roles() {
     $bot_token = get_option('steam_auth_discord_bot_token', '');
-    //$guild_id = '958141724054671420';
     $guild_id = get_option('steam_auth_discord_guild_id', '');
     if (!$bot_token) return [];
 
@@ -1821,8 +1747,12 @@ function steam_auth_create_logs_table() {
         PRIMARY KEY  (id)
     ) $charset_collate;";
 
-    require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-    dbDelta( $sql );
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta($sql);
+
+    if (get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Таблица $table_name создана или обновлена");
+    }
 }
 
 // Функция для создания таблицы сообщений
@@ -1833,6 +1763,7 @@ function steam_auth_create_messages_table() {
 
     $sql = "CREATE TABLE $table_name (
         id bigint(20) NOT NULL AUTO_INCREMENT,
+        original_message_id BIGINT(20) DEFAULT 0,
         user_id bigint(20) NOT NULL DEFAULT 0,
         role varchar(50) DEFAULT '' NOT NULL,
         title varchar(255) NOT NULL,
@@ -1854,12 +1785,74 @@ function steam_auth_create_messages_table() {
     }
 }
 
+// Функция для создания таблиц тикетов
+function steam_auth_create_tickets_tables() {
+    global $wpdb;
+    $charset_collate = $wpdb->get_charset_collate();
 
-// Проверка и создание таблицы при загрузке плагина
+    $tickets_table = $wpdb->prefix . 'steam_auth_tickets';
+    $sql_tickets = "CREATE TABLE $tickets_table (
+        id BIGINT(20) NOT NULL AUTO_INCREMENT,
+        user_id BIGINT(20) NOT NULL,
+        topic_id BIGINT(20) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        status ENUM('open', 'in_progress', 'closed') DEFAULT 'open' NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        KEY user_id (user_id),
+        KEY status (status)
+    ) $charset_collate;";
+
+    $messages_table = $wpdb->prefix . 'steam_auth_ticket_messages';
+    $sql_messages = "CREATE TABLE $messages_table (
+        id BIGINT(20) NOT NULL AUTO_INCREMENT,
+        ticket_id BIGINT(20) NOT NULL,
+        user_id BIGINT(20) NOT NULL,
+        steam_id VARCHAR(255) NOT NULL DEFAULT '',
+        source ENUM('user', 'admin_site', 'admin_bot') DEFAULT 'user' NOT NULL,
+        content TEXT NOT NULL,
+        attachment_url VARCHAR(255) DEFAULT '' NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        is_read TINYINT(1) DEFAULT 0 NOT NULL,
+        PRIMARY KEY (id),
+        KEY ticket_id (ticket_id),
+        KEY user_id (user_id),
+        KEY steam_id (steam_id)
+    ) $charset_collate;";
+
+    $topics_table = $wpdb->prefix . 'steam_auth_ticket_topics';
+    $sql_topics = "CREATE TABLE $topics_table (
+        id BIGINT(20) NOT NULL AUTO_INCREMENT,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        is_active TINYINT(1) DEFAULT 1 NOT NULL,
+        PRIMARY KEY (id)
+    ) $charset_collate;";
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta($sql_tickets);
+    dbDelta($sql_messages);
+    dbDelta($sql_topics);
+
+    if (get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Таблицы тикетов ($tickets_table, $messages_table, $topics_table) созданы или обновлены");
+    }
+}
+
+// Регистрируем создание таблиц при активации плагина
+register_activation_hook(__FILE__, 'steam_auth_create_logs_table');
+register_activation_hook(__FILE__, 'steam_auth_create_messages_table');
+register_activation_hook(__FILE__, 'steam_auth_create_tickets_tables');
+
+// Проверка существования таблиц при загрузке (опционально)
 function steam_auth_check_tables() {
     global $wpdb;
     $logs_table = $wpdb->prefix . 'steam_auth_logs';
     $messages_table = $wpdb->prefix . 'steam_auth_messages';
+    $tickets_table = $wpdb->prefix . 'steam_auth_tickets';
+    $ticket_messages_table = $wpdb->prefix . 'steam_auth_ticket_messages';
+    $topics_table = $wpdb->prefix . 'steam_auth_ticket_topics';
 
     if ($wpdb->get_var("SHOW TABLES LIKE '$logs_table'") != $logs_table) {
         steam_auth_create_logs_table();
@@ -1867,10 +1860,13 @@ function steam_auth_check_tables() {
     if ($wpdb->get_var("SHOW TABLES LIKE '$messages_table'") != $messages_table) {
         steam_auth_create_messages_table();
     }
+    if ($wpdb->get_var("SHOW TABLES LIKE '$tickets_table'") != $tickets_table ||
+        $wpdb->get_var("SHOW TABLES LIKE '$ticket_messages_table'") != $ticket_messages_table ||
+        $wpdb->get_var("SHOW TABLES LIKE '$topics_table'") != $topics_table) {
+        steam_auth_create_tickets_tables();
+    }
 }
 
-// Регистрируем хук на активацию и проверку при загрузке
-register_activation_hook( __FILE__, 'steam_auth_create_logs_table' );
 add_action('plugins_loaded', 'steam_auth_check_tables');
 
 // Функция для получения логов из таблицы
@@ -1904,176 +1900,6 @@ function get_steam_auth_logs($limit = 50) {
     return $results;
 }
 
-// AJAX-обработчики для вкладок
-// AJAX-обработчики для вкладок
-add_action('wp_ajax_load_tab', 'steam_auth_load_tab');
-function steam_auth_load_tab() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-
-    // Получаем данные пользователя
-    $user_id = get_current_user_id();
-    if (!$user_id) {
-        wp_die('Ошибка: пользователь не авторизован');
-    }
-
-    $user = get_userdata($user_id);
-    $steam_id = get_user_meta($user_id, 'steam_id', true);
-    $steam_profile = get_user_meta($user_id, 'steam_profile', true);
-    $steam_avatar = get_user_meta($user_id, 'steam_avatar', true);
-    $user_email = $user->user_email;
-    $display_name = $user->display_name;
-    $discord_id = get_user_meta($user_id, 'discord_id', true);
-    $discord_username = get_user_meta($user_id, 'discord_username', true);
-    $discord_unlink_requests = get_option('steam_auth_discord_unlink_requests', []);
-    
-    // Настройки профиля
-    $profile_settings = get_option('steam_profile_settings');
-    if (empty($profile_settings)) {
-        $profile_settings = [
-            'fields' => [
-                'display_name' => ['visible' => true, 'editable' => false, 'label' => 'Имя', 'icon' => 'fa-user'],
-                'steam_id' => ['visible' => true, 'editable' => false, 'label' => 'SteamID', 'icon' => 'fa-steam'],
-                'user_email' => ['visible' => true, 'editable' => true, 'label' => 'Email', 'icon' => 'fa-envelope'],
-                'steam_profile' => ['visible' => true, 'editable' => false, 'label' => 'Steam Profile', 'icon' => 'fa-link'],
-            ],
-            'custom_fields' => []
-        ];
-    }
-
-    // Сообщения
-    // $messages = get_user_messages($user_id);
-    // $unread_count = count(array_filter($messages, function($message) {
-    //     return !$message['is_read'];
-    // }));
-    $unread_count = steam_auth_get_unread_messages_count($user_id);
-
-    // Функция для префикса иконок (копируем из шорткода)
-    function get_icon_prefix($icon_name) {
-        static $icons = null;
-        if ($icons === null) {
-            $icons_json = @file_get_contents(plugin_dir_path(__FILE__) . 'icons.json');
-            $icons = $icons_json ? json_decode($icons_json, true) : [];
-        }
-        $icon_key = str_replace('fa-', '', $icon_name);
-        if (isset($icons[$icon_key])) {
-            $style = $icons[$icon_key]['styles'][0];
-            return $style === 'brands' ? 'fab' : 'fas';
-        }
-        return 'fas';
-    }
-
-    // Определяем вкладку и режим редактирования
-    $tab = isset($_POST['tab']) ? sanitize_text_field($_POST['tab']) : 'profile';
-    $edit = isset($_POST['edit']) && $_POST['edit'] === 'true';
-    $page = isset($_POST['page']) ? max(1, (int)$_POST['page']) : 1;
-    $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
-    $_GET['edit'] = $edit ? 'true' : null;
-    $_GET['page'] = $page;
-    $_GET['category'] = $category;
-
-    // Проверяем существование файла вкладки
-    $tab_file = plugin_dir_path(__FILE__) . "tabs/{$tab}-tab.php";
-    if (!file_exists($tab_file)) {
-        wp_die("Ошибка: файл вкладки {$tab} не найден");
-    }
-
-    // Загружаем содержимое вкладки
-    ob_start();
-    include $tab_file;
-    $content = ob_get_clean();
-
-    echo $content;
-    wp_die();
-}
-
-add_action('wp_ajax_save_profile', 'steam_auth_save_profile');
-function steam_auth_save_profile() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-
-    $user_id = get_current_user_id();
-    $profile_settings = get_option('steam_profile_settings');
-    $updated_data = [];
-    $errors = [];
-
-    if (!isset($_POST['steam_edit_profile_action']) || !wp_verify_nonce($_POST['steam_edit_profile_action'], 'steam_edit_profile_nonce')) {
-        wp_send_json_error('Ошибка безопасности');
-    }
-
-    foreach ($profile_settings['fields'] as $field => $settings) {
-        if ($settings['editable'] && isset($_POST[$field])) {
-            $value = sanitize_text_field($_POST[$field]);
-            if ($field === 'user_email' && !is_email($value)) {
-                $errors[] = 'Некорректный email';
-            } else {
-                $updated_data[$field] = $value;
-            }
-        }
-    }
-
-    foreach ($profile_settings['custom_fields'] as $field => $settings) {
-        if ($settings['editable'] && isset($_POST[$field])) {
-            $value = $settings['type'] === 'textarea' ? sanitize_textarea_field($_POST[$field]) : sanitize_text_field($_POST[$field]);
-            update_user_meta($user_id, $field, $value);
-        }
-    }
-
-    if (empty($errors)) {
-        $updated = wp_update_user(array_merge(['ID' => $user_id], $updated_data));
-        if (is_wp_error($updated)) {
-            wp_send_json_error($updated->get_error_message());
-        } else {
-            wp_send_json_success();
-        }
-    } else {
-        wp_send_json_error(implode('<br>', $errors));
-    }
-}
-
-add_action('wp_ajax_mark_read', 'steam_auth_mark_read');
-function steam_auth_mark_read() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $user_id = get_current_user_id();
-    $message_id = sanitize_text_field($_POST['message_id']);
-    mark_message_read($user_id, $message_id);
-    wp_send_json_success();
-}
-
-add_action('wp_ajax_delete_message', 'steam_auth_delete_message');
-function steam_auth_delete_message() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $user_id = get_current_user_id();
-    $message_id = sanitize_text_field($_POST['message_id']);
-    delete_user_message($user_id, $message_id);
-    wp_send_json_success();
-}
-
-add_action('wp_ajax_delete_all_read', 'steam_auth_delete_all_read');
-function steam_auth_delete_all_read() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $user_id = get_current_user_id();
-    delete_all_read_messages($user_id);
-    wp_send_json_success();
-}
-
-add_action('wp_ajax_delete_all', 'steam_auth_delete_all');
-function steam_auth_delete_all() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $user_id = get_current_user_id();
-    delete_all_messages($user_id);
-    wp_send_json_success();
-}
-
-add_action('wp_ajax_update_discord_notifications_profile', 'steam_auth_update_discord_notifications_profile');
-function steam_auth_update_discord_notifications_profile() {
-    check_ajax_referer('steam_profile_nonce', 'nonce');
-    $user_id = get_current_user_id();
-    $enabled = isset($_POST['enabled']) && $_POST['enabled'] == '1' ? '1' : '0';
-
-    update_user_meta($user_id, 'discord_notifications_enabled', $enabled);
-
-    $message = $enabled == '1' ? 'Уведомления Discord включены' : 'Уведомления Discord отключены';
-    wp_send_json_success(['message' => $message]);
-}
 
 function get_message_categories() {
     global $wpdb;
@@ -2081,5 +1907,230 @@ function get_message_categories() {
 
     $categories = $wpdb->get_col("SELECT DISTINCT category FROM $table_name WHERE category != '' ORDER BY category");
     return $categories;
+}
+
+
+
+add_filter('wp_handle_upload_prefilter', 'steam_auth_restrict_upload');
+function steam_auth_restrict_upload($file) {
+    if (in_array(current_filter(), ['wp_ajax_create_ticket', 'wp_ajax_reply_ticket', 'wp_ajax_admin_reply_ticket'])) {
+        $max_size = get_option('steam_auth_ticket_max_file_size', 5) * 1024 * 1024; // в байтах
+        $allowed_types = explode(',', get_option('steam_auth_ticket_allowed_file_types', 'jpg,png,pdf'));
+        $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+
+        if ($file['size'] > $max_size) {
+            $file['error'] = "Файл слишком большой (макс. {$max_size} МБ)";
+        } elseif (!in_array(strtolower($file_ext), array_map('strtolower', $allowed_types))) {
+            $file['error'] = "Тип файла не разрешён (допустимые: " . implode(', ', $allowed_types) . ")";
+        }
+    }
+    return $file;
+}
+
+
+function steam_auth_get_tickets($request) {
+    global $wpdb;
+    $tickets_table = $wpdb->prefix . 'steam_auth_tickets';
+    $messages_table = $wpdb->prefix . 'steam_auth_ticket_messages';
+    $status = $request->get_param('status') ?? 'all';
+
+    $query = "SELECT t.*, u.user_login 
+              FROM $tickets_table t 
+              LEFT JOIN {$wpdb->users} u ON t.user_id = u.ID";
+    if ($status !== 'all') {
+        $query .= $wpdb->prepare(" WHERE t.status = %s", $status);
+    }
+    $query .= " ORDER BY t.created_at DESC";
+
+    $tickets = $wpdb->get_results($query, ARRAY_A);
+
+    if (!$tickets) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Тикетов с фильтром '$status' не найдено");
+        }
+        return [];
+    }
+
+    foreach ($tickets as &$ticket) {
+        $ticket_id = $ticket['id'];
+        $messages = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT user_id, steam_id, source, content, attachment_url, created_at 
+                 FROM $messages_table 
+                 WHERE ticket_id = %d 
+                 ORDER BY created_at ASC",
+                $ticket_id
+            ),
+            ARRAY_A
+        );
+        $ticket['messages'] = $messages ?: [];
+        $ticket['initial_message'] = !empty($messages) ? $messages[0]['content'] : '';
+    }
+    unset($ticket);
+
+    return $tickets;
+}
+
+function update_ticket_status_telegram($request) {
+    global $wpdb;
+    $ticket_id = intval($request->get_param('ticket_id'));
+    $status = in_array($request->get_param('status'), ['open', 'in_progress', 'closed']) ? $request->get_param('status') : 'open';
+
+    if (!$ticket_id) {
+        return new WP_Error('invalid_ticket_id', 'Неверный ID тикета', ['status' => 400]);
+    }
+
+    $updated = $wpdb->update(
+        $wpdb->prefix . 'steam_auth_tickets',
+        ['status' => $status],
+        ['id' => $ticket_id],
+        ['%s'],
+        ['%d']
+    );
+
+    if ($updated === false) {
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: Ошибка обновления статуса тикета #$ticket_id: " . $wpdb->last_error);
+        }
+        return new WP_Error('db_error', 'Ошибка базы данных', ['status' => 500]);
+    }
+
+    if ($updated === 0) {
+        return new WP_Error('no_change', 'Тикет не найден или статус не изменился', ['status' => 404]);
+    }
+
+    $ticket = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM {$wpdb->prefix}steam_auth_tickets WHERE id = %d", $ticket_id));
+    if ($ticket) {
+        $discord_id = get_user_meta($ticket->user_id, 'discord_id', true);
+        $steam_id = get_user_meta($ticket->user_id, 'steam_id', true);
+        $days = get_option('steam_auth_ticket_auto_delete_days', 0);
+
+        if ($discord_id) {
+            $status_text = $status === 'open' ? 'Открыт' : ($status === 'in_progress' ? 'В обработке' : 'Закрыт');
+            $message = "Новый статус: $status_text";
+            if ($status === 'closed' && $days > 0) {
+                $message .= "\nТикет будет автоматически удалён через $days дней.";
+            }
+            send_discord_message($discord_id, "Статус тикета #$ticket_id обновлён", $message);
+        }
+        //log_steam_action($steam_id, 'ticket_status_updated', '', '', "Тикет #$ticket_id: $status");
+    }
+
+    if (get_option('steam_auth_debug', false)) {
+        error_log("Steam Auth: Статус тикета #$ticket_id успешно обновлён на '$status'");
+    }
+
+    return ['success' => true, 'message' => "Статус тикета #$ticket_id обновлён на $status"];
+}
+
+function admin_reply_ticket_telegram($request) {
+    global $wpdb;
+    $tickets_table = $wpdb->prefix . 'steam_auth_tickets';
+    $messages_table = $wpdb->prefix . 'steam_auth_ticket_messages';
+
+    $ticket_id = intval($request->get_param('ticket_id'));
+    $content = wp_kses_post($request->get_param('content'));
+    $telegram_id = $request->get_param('admin_id');
+
+    if (!$ticket_id || !$content || !$telegram_id) {
+        return new WP_Error('invalid_data', 'Отсутствуют обязательные параметры', ['status' => 400]);
+    }
+
+    $ticket = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tickets_table WHERE id = %d", $ticket_id));
+    if (!$ticket) {
+        return new WP_Error('ticket_not_found', 'Тикет не найден', ['status' => 404]);
+    }
+
+    $new_status = ($ticket->status === 'closed') ? 'in_progress' : $ticket->status;
+    if ($ticket->status !== $new_status) {
+        $wpdb->update($tickets_table, ['status' => $new_status], ['id' => $ticket_id]);
+    }
+
+    $inserted = $wpdb->insert($messages_table, [
+        'ticket_id' => $ticket_id,
+        'user_id' => 0,
+        'steam_id' => "telegram_$telegram_id",
+        'source' => 'admin_bot', // Явно указываем источник
+        'content' => $content,
+        'attachment_url' => ''
+    ]);
+
+    if ($inserted === false) {
+        error_log("Steam Auth: Ошибка вставки сообщения в тикет #$ticket_id: " . $wpdb->last_error);
+        return new WP_Error('db_error', 'Ошибка базы данных', ['status' => 500]);
+    }
+
+    if ($new_status !== 'in_progress') {
+        $wpdb->update($tickets_table, ['status' => 'in_progress'], ['id' => $ticket_id]);
+    }
+
+    $discord_id = get_user_meta($ticket->user_id, 'discord_id', true);
+    if ($discord_id) {
+        send_discord_message($discord_id, "Ответ в тикете #$ticket_id", "Администратор ответил: $content");
+    }
+
+    error_log("Steam Auth: Ответ на тикет #$ticket_id отправлен от Telegram ID $telegram_id");
+    return ['success' => true, 'message' => "Ответ на тикет #$ticket_id отправлен" . ($ticket->status === 'closed' ? " (тикет переоткрыт)" : "")];
+}
+
+// Функция для удаления старых закрытых тикетов
+function steam_auth_auto_delete_closed_tickets() {
+    global $wpdb;
+    $tickets_table = $wpdb->prefix . 'steam_auth_tickets';
+    $messages_table = $wpdb->prefix . 'steam_auth_ticket_messages';
+    $days = get_option('steam_auth_ticket_auto_delete_days', 0);
+
+    if ($days <= 0) {
+        return;
+    }
+
+    $threshold_date = date('Y-m-d H:i:s', strtotime("-$days days"));
+    $tickets_to_delete = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, user_id FROM $tickets_table WHERE status = 'closed' AND updated_at < %s",
+            $threshold_date
+        ),
+        ARRAY_A
+    );
+
+    if (empty($tickets_to_delete)) {
+        return;
+    }
+
+    foreach ($tickets_to_delete as $ticket) {
+        $ticket_id = $ticket['id'];
+        $user_id = $ticket['user_id'];
+
+        $wpdb->delete($messages_table, ['ticket_id' => $ticket_id], ['%d']);
+        $wpdb->delete($tickets_table, ['id' => $ticket_id], ['%d']);
+
+        $steam_id = get_user_meta($user_id, 'steam_id', true);
+        log_steam_action($steam_id, 'ticket_auto_deleted', '', '', "Тикет #$ticket_id автоматически удалён спустя $days дней после закрытия");
+    }
+
+    // Проверяем, остались ли тикеты в таблице
+    $remaining_tickets = $wpdb->get_var("SELECT COUNT(*) FROM $tickets_table");
+    if ($remaining_tickets == 0) {
+        $wpdb->query("ALTER TABLE $tickets_table AUTO_INCREMENT = 1");
+        if (get_option('steam_auth_debug', false)) {
+            error_log("Steam Auth: AUTO_INCREMENT сброшен до 1 для таблицы $tickets_table");
+        }
+    }
+}
+
+// Регистрация события в WordPress Cron
+add_action('steam_auth_auto_delete_tickets_event', 'steam_auth_auto_delete_closed_tickets');
+// Планирование события при активации плагина
+register_activation_hook(__FILE__, 'steam_auth_schedule_ticket_deletion');
+function steam_auth_schedule_ticket_deletion() {
+    if (!wp_next_scheduled('steam_auth_auto_delete_tickets_event')) {
+        wp_schedule_event(time(), 'daily', 'steam_auth_auto_delete_tickets_event');
+    }
+}
+
+// Очистка расписания при деактивации плагина
+register_deactivation_hook(__FILE__, 'steam_auth_clear_ticket_deletion_schedule');
+function steam_auth_clear_ticket_deletion_schedule() {
+    wp_clear_scheduled_hook('steam_auth_auto_delete_tickets_event');
 }
 ?>

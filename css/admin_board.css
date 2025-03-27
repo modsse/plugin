@@ -1,0 +1,507 @@
+/* Импорт шрифтов и иконок */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+/* Основной контейнер админ-дашборда */
+#steam-admin-dashboard {
+    font-family: 'Roboto', sans-serif;
+    color: #dcdcdc;
+    background: #1a1d22;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Навигация вкладок */
+.tabs-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-link {
+    padding: 12px 20px;
+    background: #252930;
+    color: #dcdcdc;
+    text-decoration: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-link:hover {
+    background: #f39c12;
+    color: #fff;
+}
+
+.tab-link.active {
+    background: #f39c12;
+    color: #fff;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Контент вкладок */
+.tab-content {
+    display: none;
+    background: #252930;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+    overflow-x: auto;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Таблица тикетов */
+.wp-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #dcdcdc;
+    min-width: 600px;
+}
+
+.wp-list-table th,
+.wp-list-table td {
+    padding: 12px;
+    border-bottom: 1px solid #3a4048;
+    text-align: left;
+}
+
+.wp-list-table th {
+    background: #b3702d;
+    color: #fff;
+}
+
+.wp-list-table td {
+    background: #2c3138;
+}
+
+.wp-list-table .ticket-status {
+    padding: 5px 10px;
+    border-radius: 4px;
+    background: #1e2228;
+    color: #dcdcdc;
+    border: 1px solid #3a4048;
+}
+
+.wp-list-table .button {
+    padding: 5px 10px;
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.wp-list-table .button:hover {
+    background: linear-gradient(90deg, #e67e22, #d35400);
+}
+
+/* Модальное окно тикета */
+#ticket-modal {
+    position: absolute;
+    top: 1%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 900px;
+    height: 95%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+#ticket-modal-content {
+    background: linear-gradient(135deg, #252930 0%, #1e2228 100%);
+    padding: 0;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    height: 95%;
+    overflow-y: auto;
+    position: relative;
+    color: #dcdcdc;
+}
+
+/* Шапка тикета */
+.ticket-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #3a4048;
+    position: relative;
+    background: #31373f;
+}
+
+.admin-ticket-h3 {
+    margin: 0;
+    color: #18d591;
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.ticket-meta {
+    margin-top: 10px;
+    font-size: 14px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.ticket-meta span {
+    display: flex;
+    align-items: center;
+    background: #2c3138;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.ticket-meta strong {
+    margin-right: 5px;
+    color: #f39c12;
+}
+
+.ticket-meta i {
+    margin-right: 5px;
+    color: #18d591;
+}
+
+.ticket-status {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.ticket-status.open { color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
+.ticket-status.in_progress { color: #f39c12; background: rgba(243, 156, 18, 0.2); }
+.ticket-status.closed { color: #e74c3c; background: rgba(231, 76, 60, 0.2); }
+
+.ticket-progress {
+    margin-top: 10px;
+    height: 4px;
+    background: #3a4048;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ticket-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.ticket-progress.open .ticket-progress-bar { width: 33%; background: #2ecc71; }
+.ticket-progress.in_progress .ticket-progress-bar { width: 66%; background: #f39c12; }
+.ticket-progress.closed .ticket-progress-bar { width: 100%; background: #e74c3c; }
+
+.ticket-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 5px 10px;
+    background: #343a40;
+    color: #dcdcdc;
+    border: 1px solid #3a4048;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: #f39c12;
+    color: #fff;
+}
+
+.ticket-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 24px;
+    color: #adb5bd;
+    cursor: pointer;
+    background: none;
+    transition: color 0.3s ease;
+}
+
+.ticket-modal-close:hover {
+    color: #e74c3c;
+}
+
+/* Контейнер сообщений */
+.ticket-messages-container {
+    padding: 20px;
+    max-height: 50%;
+    overflow-y: auto;
+}
+
+.ticket-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    position: relative;
+}
+
+.ticket-message:last-child {
+    border-left: 3px solid #f39c12;
+}
+
+.user-message {
+    background: #2c3138;
+    margin-left: 20%;
+}
+
+.admin-message {
+    background: #1e2228;
+    margin-right: 20%;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #adb5bd;
+    margin-bottom: 5px;
+}
+
+.message-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.message-author {
+    font-weight: 500;
+    color: #f39c12;
+}
+
+.message-time {
+    color: #6c757d;
+}
+
+.message-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.message-attachment a {
+    color: #18d591;
+    text-decoration: none;
+}
+
+.message-attachment a:hover {
+    text-decoration: underline;
+}
+
+/* Форма ответа */
+.ticket-reply-form {
+    padding: 20px;
+    border-top: 1px solid #3a4048;
+    background: #252930;
+}
+
+.ticket-reply-form h4 {
+    margin: 0 0 15px;
+    color: #f39c12;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.form-field {
+    margin-bottom: 15px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #dcdcdc;
+}
+
+.wp-editor-area {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    padding: 10px;
+    line-height: 150%;
+    border: 1px solid #3a4048;
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    background: #343a40 !important;
+    color: #adb5bd;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.file-input {
+    padding: 5px;
+    background: #343a40;
+    border: 1px solid #3a4048;
+    border-radius: 4px;
+    color: #dcdcdc;
+    width: 100%;
+}
+
+.form-actions {
+    text-align: right;
+}
+
+.button.button-primary {
+    padding: 8px 20px;
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.button.button-primary:hover {
+    background: linear-gradient(90deg, #e67e22, #d35400);
+}
+
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    z-index: 3000;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+}
+
+.notification.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Спиннер загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #dcdcdc;
+    border-top: 2px solid #f39c12;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Временная шкала */
+.ticket-messages-container {
+    padding: 20px;
+    max-height: 50%;
+    overflow-y: auto;
+    position: relative;
+}
+
+.ticket-messages-container::before {
+    content: '';
+    position: absolute;
+    left: 42px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: #3a4048;
+}
+
+.ticket-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Быстрые шаблоны */
+#quick-reply {
+    width: 100%;
+    padding: 8px;
+    background: #343a40;
+    border: 1px solid #3a4048;
+    border-radius: 4px;
+    color: #dcdcdc;
+    font-size: 14px;
+}
+
+/* Интерактивные подсказки */
+.action-btn {
+    padding: 5px 10px;
+    background: #343a40;
+    color: #dcdcdc;
+    border: 1px solid #3a4048;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.action-btn:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: #f39c12;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.ticket-timer {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #e74c3c;
+}
+
+.ticket-note {
+    padding: 15px;
+    background: #343a40;
+    border-radius: 6px;
+    margin: 20px;
+    color: #f39c12;
+}
+.ticket-note h4 {
+    margin: 0 0 10px;
+    color: #18d591;
+}
+
+#ticket-modal-content.theme-open {
+    background: linear-gradient(135deg, #252930 0%, #1e7e34 100%);
+}
+#ticket-modal-content.theme-in_progress {
+    background: linear-gradient(135deg, #252930 0%, #8e4e00 100%);
+}
+#ticket-modal-content.theme-closed {
+    background: linear-gradient(135deg, #252930 0%, #a71d31 100%);
+}

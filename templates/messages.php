@@ -5,18 +5,18 @@ $roles = wp_roles()->get_names();
 $table_name = $wpdb->prefix . 'steam_auth_messages';
 
 // Настройки пагинации
-$per_page = 20; // Количество сообщений на странице
+$per_page = 20;
 $page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
 $offset = ($page - 1) * $per_page;
 
-// Получаем общее количество сообщений
-$total_messages = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+// Получаем общее количество оригинальных сообщений
+$total_messages = $wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE original_message_id = 0");
 $total_pages = ceil($total_messages / $per_page);
 
-// Получаем сообщения для текущей страницы
+// Получаем оригинальные сообщения для текущей страницы
 $all_messages = $wpdb->get_results(
     $wpdb->prepare(
-        "SELECT * FROM $table_name ORDER BY date DESC LIMIT %d OFFSET %d",
+        "SELECT * FROM $table_name WHERE original_message_id = 0 ORDER BY date DESC LIMIT %d OFFSET %d",
         $per_page,
         $offset
     ),
@@ -78,8 +78,8 @@ $categories = $wpdb->get_col("SELECT DISTINCT category FROM $table_name WHERE ca
                     'format' => '',
                     'total' => $total_pages,
                     'current' => $page,
-                    'prev_text' => __('&laquo; Назад'),
-                    'next_text' => __('Вперед &raquo;'),
+                    'prev_text' => __('« Назад'),
+                    'next_text' => __('Вперед »'),
                 ];
                 echo paginate_links($pagination_args);
                 ?>
@@ -183,3 +183,25 @@ $categories = $wpdb->get_col("SELECT DISTINCT category FROM $table_name WHERE ca
         </tbody>
     </table>
 </div>
+
+<h3>Настройки сообщений</h3>
+<form id="steam-messages-settings-form" method="post">
+    <?php wp_nonce_field('steam_auth_messages_settings', 'nonce'); ?>
+    <table class="form-table">
+        <tr>
+            <th><label for="steam_auth_allow_user_delete_messages">Разрешить пользователям удалять сообщения</label></th>
+            <td>
+                <label class="toggle-switch" data-tooltip="Позволить пользователям удалять свои сообщения в профиле">
+                    <input type="checkbox" name="steam_auth_allow_user_delete_messages" id="steam_auth_allow_user_delete_messages" <?php checked(get_option('steam_auth_allow_user_delete_messages', false), true); ?>>
+                    <span class="slider"></span>
+                </label>
+                
+                <p class="description">Если включено, пользователи смогут удалять свои сообщения в профиле.</p>
+            </td>
+        </tr>
+    </table>
+    <p class="submit">
+        <input type="submit" class="button-primary" value="Сохранить настройки" />
+        <span class="loading-spinner" id="settings-spinner" style="display: none;"></span>
+    </p>
+</form>

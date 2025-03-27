@@ -16,7 +16,7 @@
 
 /* Боковая панель */
 .sidebar {
-    width: 250px;
+    width: 12%;
     background: linear-gradient(180deg, #252930 0%, #1a1d22 100%);
     padding: 20px;
     border-right: 1px solid rgba(243, 156, 18, 0.2);
@@ -27,7 +27,7 @@
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     z-index: 10;
-    transition: width 0.3s ease; /* Плавный переход ширины */
+    transition: width 0.3s ease;
 }
 
 .sidebar.collapsed {
@@ -61,7 +61,7 @@
     text-align: center;
     margin-bottom: 30px;
     position: relative;
-    padding-top: 40px; /* Добавляем отступ сверху для кнопки */
+    padding-top: 40px;
 }
 
 .sidebar-toggle {
@@ -72,8 +72,8 @@
     cursor: pointer;
     position: absolute;
     top: 10px;
-    left: 10px; /* Смещаем влево вместо right */
-    padding: 5px; /* Увеличиваем область клика */
+    left: 10px;
+    padding: 5px;
     transition: transform 0.3s ease;
 }
 
@@ -82,11 +82,10 @@
     transform: scale(1.1);
 }
 
-.sidebar.collapsed .tab-link span { /* Скрываем текст */
+.sidebar.collapsed .tab-link span {
     display: none;
 }
 
-/* Добавим для .steam-logout-btn */
 .sidebar.collapsed .steam-logout-btn span {
     display: none;
 }
@@ -102,7 +101,7 @@
 }
 
 .sidebar.collapsed .tab-link i {
-    font-size: 20px; /* Увеличиваем иконки для читаемости */
+    font-size: 20px;
 }
 
 .sidebar-header .avatar {
@@ -176,8 +175,8 @@
 
 /* Контент дашборда */
 .dashboard-content {
-    margin-left: 250px;
-    width: calc(100% - 250px);
+    margin-left: 12%;
+    width: calc(100% - 12%);
     padding: 20px;
     background: #1a1d22;
     min-height: 100vh;
@@ -185,7 +184,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    transition: margin-left 0.3s ease, width 0.3s ease; /* Плавный переход */
+    transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
 /* Виджеты */
@@ -369,7 +368,7 @@
 .widget-messages .message-list {
     list-style: none;
     padding: 0;
-    max-height: 600px; /* Увеличиваем до 600px, примерно 10-12 сообщений */
+    max-height: 600px;
     overflow-y: auto;
 }
 
@@ -379,6 +378,7 @@
     gap: 5px;
     justify-content: center;
 }
+
 .pagination a {
     padding: 5px 10px;
     background: #252930;
@@ -387,10 +387,12 @@
     border-radius: 3px;
     transition: background 0.2s ease;
 }
+
 .pagination a:hover {
     background: #f39c12;
     color: #fff;
 }
+
 .pagination a.active {
     background: #f39c12;
     color: #fff;
@@ -417,6 +419,7 @@
     font-weight: bold;
     color: #d54e21;
 }
+
 .message-item.read .message-title {
     color: #555;
 }
@@ -503,30 +506,31 @@
 /* Уведомления */
 .notification {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 5%;
+    right: 38%;
     padding: 15px 25px;
     border-radius: 8px;
     color: #fff;
     font-size: 16px;
-    z-index: 1000;
+    z-index: 3000;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     gap: 10px;
     opacity: 0;
-    transform: translateY(-20px);
-    transition: all 0.3s ease;
+    transform: translateY(-5%);
+    transition: all 2.5s ease;
 }
 
 .notification.visible {
     opacity: 1;
-    transform: translateY(0);
-    animation: slideIn 3s ease forwards;
+    transform: translateY(0x);
+    animation: slideIn 5s ease forwards;
 }
 
 .notification.success {
     background: linear-gradient(90deg, #2ecc71, #27ae60);
+    top: 10%;
 }
 
 .notification.success::before {
@@ -544,10 +548,11 @@
 }
 
 @keyframes slideIn {
-    0% { opacity: 0; transform: translateY(-20px); }
-    10% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(-10%); }
+    10% { opacity: 0.3; }
+    10% { opacity: 0.5; transform: translateY(0); }
     90% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 0; transform: translateY(-10%); }
 }
 
 /* Адаптивность */
@@ -560,7 +565,7 @@
         border-bottom: 1px solid rgba(243, 156, 18, 0.2);
     }
     .sidebar.collapsed {
-        width: 100%; /* Не сворачиваем на мобильных */
+        width: 100%;
     }
     .dashboard-content {
         margin-left: 0;
@@ -571,7 +576,7 @@
         width: 100%;
     }
     .sidebar-toggle {
-        display: none; /* Скрываем кнопку на мобильных */
+        display: none;
     }
     .sidebar-header .avatar {
         width: 60px;
@@ -599,71 +604,359 @@
         justify-content: center;
     }
     .category-filter a {
-        padding: 5px 10px; /* Уменьшаем для мобильных */
+        padding: 5px 10px;
     }
+}
 
-    #user-notifications {
-        position: relative;
-        z-index: 5; /* Меньше, чем у .sidebar */
-        margin-bottom: 20px;
-    }
-    
-    .user-notification {
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        position: relative;
-        animation: slideIn 0.3s ease;
-        overflow: hidden;
-    }
-    
-    .user-notification h4 {
-        margin: 0 0 10px;
-        font-size: 16px;
-        font-weight: 500;
-    }
-    
-    .user-notification div {
-        font-size: 14px;
-        word-break: break-word;
-    }
-    
-    .close-notification {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: none;
-        border: none;
-        color: inherit;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        line-height: 20px;
-        text-align: center;
-        transition: opacity 0.3s ease;
-    }
-    
-    .close-notification:hover {
-        opacity: 0.7;
-    }
-    
-    @media (max-width: 768px) {
-        #user-notifications {
-            top: 10px;
-            right: 10px;
-            width: calc(100% - 20px);
-            max-width: 300px;
-        }
-        .user-notification {
-            padding: 10px;
-        }
-        .user-notification h4 {
-            font-size: 14px;
-        }
-        .user-notification div {
-            font-size: 12px;
-        }
-    }
+/* Форма тикетов */
+.ticket-form {
+    margin: 20px 0;
+    padding: 15px;
+    background: linear-gradient(135deg, #252930 0%, #1e2228 100%);
+    border-radius: 10px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.ticket-form h4 {
+    margin: 0 0 15px;
+    font-size: 16px;
+    color: #f39c12;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ticket-form label {
+    display: block;
+    margin: 10px 0 5px;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.ticket-form select,
+.ticket-form input[type="text"],
+.ticket-form input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
+    border: 1px solid #3a4048;
+    border-radius: 6px;
+    background: #1e2228;
+    color: #dcdcdc;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.ticket-form select:focus,
+.ticket-form input[type="text"]:focus {
+    border-color: #f39c12;
+    outline: none;
+}
+
+/* Список тикетов */
+.ticket-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ticket-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #2c3138;
+    border-radius: 5px;
+    transition: background 0.2s ease, transform 0.3s ease;
+}
+
+.ticket-item:hover {
+    background: #343a40;
+    transform: translateY(-2px);
+}
+
+.ticket-item.open {
+    border-left: 4px solid #2ecc71;
+}
+
+.ticket-item.in_progress {
+    border-left: 4px solid #f39c12;
+}
+
+.ticket-item.closed {
+    border-left: 4px solid #e74c3c;
+}
+
+.ticket-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.ticket-id {
+    font-weight: bold;
+    color: #adb5bd;
+}
+
+.ticket-topic {
+    font-weight: 500;
+    color: #dcdcdc;
+}
+
+.ticket-title {
+    flex-grow: 1;
+    color: #ffffff;
+}
+
+.ticket-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.ticket-item.open .ticket-status {
+    background: #2ecc71;
+    color: #fff;
+}
+
+.ticket-item.in_progress .ticket-status {
+    background: #f39c12;
+    color: #fff;
+}
+
+.ticket-item.closed .ticket-status {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.ticket-date {
+    font-size: 12px;
+    color: #adb5bd;
+}
+
+.ticket-actions a {
+    color: #f39c12;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.ticket-actions a:hover {
+    color: #e67e22;
+    text-decoration: underline;
+}
+
+/* Модальное окно */
+.steam-modal {
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.steam-modal-content {
+    background: linear-gradient(135deg, #252930 0%, #1e2228 100%);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    max-width: 600px;
+    width: 90%;
+    color: #dcdcdc;
+    font-size: 14px;
+    line-height: 1.5;
+    position: relative;
+}
+
+.steam-modal-content h3 {
+    color: #f39c12;
+    margin: 0 0 15px;
+    font-size: 18px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.steam-modal-content p {
+    margin: 10px 0;
+    color: #dcdcdc;
+}
+
+.steam-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+    color: #adb5bd;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.steam-modal-close:hover {
+    color: #e74c3c;
+}
+
+/* Спиннер загрузки */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #dcdcdc;
+    border-top: 2px solid #f39c12;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Аккордеон для формы тикета */
+.accordion {
+    margin: 20px 0;
+}
+
+.accordion-toggle {
+    width: 100%;
+    padding: 12px 15px;
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.3s ease;
+}
+
+.accordion-toggle:hover {
+    background: linear-gradient(90deg, #e67e22, #d35400);
+}
+
+.accordion-icon {
+    transition: transform 0.3s ease;
+}
+
+.accordion.open .accordion-icon {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    padding: 15px;
+    background: linear-gradient(135deg, #252930 0%, #1e2228 100%);
+    border-radius: 0 0 10px 10px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Сообщения в тикете */
+.ticket-messages {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.ticket-message {
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background: #2c3138;
+    position: relative;
+}
+
+.ticket-message.admin {
+    background: #343a40;
+    border-left: 4px solid #f39c12;
+}
+
+.ticket-message:not(.admin) {
+    background: #252930;
+    border-left: 4px solid #2ecc71;
+}
+
+.ticket-message .message-author {
+    font-weight: 500;
+    color: #f39c12;
+    margin-bottom: 5px;
+}
+
+.ticket-message .message-content {
+    color: #dcdcdc;
+    word-break: break-word;
+}
+
+.ticket-message .message-date {
+    font-size: 12px;
+    color: #adb5bd;
+    margin-top: 5px;
+}
+
+.ticket-message .message-attachment {
+    margin-top: 10px;
+}
+
+.ticket-message .message-attachment a {
+    color: #f39c12;
+    text-decoration: none;
+}
+
+.ticket-message .message-attachment a:hover {
+    text-decoration: underline;
+}
+
+/* Форма ответа в модальном окне */
+#ticket-reply-form {
+    margin-top: 20px;
+    padding: 15px;
+    background: #2c3138;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+#ticket-reply-form label {
+    color: #ffffff;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 5px;
+}
+
+#ticket-reply-form textarea,
+#ticket-reply-form input[type="file"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #3a4048;
+    border-radius: 6px;
+    background: #1e2228;
+    color: #dcdcdc;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+#ticket-reply-form textarea:focus,
+#ticket-reply-form input[type="file"]:focus {
+    border-color: #f39c12;
+    outline: none;
+}
+
+#ticket-reply-form input[type="submit"] {
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#ticket-reply-form input[type="submit"]:hover {
+    background: linear-gradient(90deg, #e67e22, #d35400);
+    transform: scale(1.02);
 }

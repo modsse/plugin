@@ -8,6 +8,7 @@ $messages_data = get_user_messages($user_id, $category_filter, $per_page, $page)
 $messages = $messages_data['messages'];
 $total_pages = $messages_data['pages'];
 $categories = get_message_categories();
+$allow_user_delete = get_option('steam_auth_allow_user_delete_messages', 0); // Проверяем настройку
 ?>
 
 <div class="widget widget-messages">
@@ -35,7 +36,7 @@ $categories = get_message_categories();
                     <div class="message-actions">
                         <?php if (!$message['is_read']): ?>
                             <a href="#" class="mark-read" data-message-id="<?php echo esc_attr($message['id']); ?>">Прочитать</a>
-                        <?php else: ?>
+                        <?php elseif ($allow_user_delete): ?>
                             <a href="#" class="delete-message" data-message-id="<?php echo esc_attr($message['id']); ?>">Удалить</a>
                         <?php endif; ?>
                     </div>
@@ -52,9 +53,11 @@ $categories = get_message_categories();
                 <?php endfor; ?>
             </div>
         <?php endif; ?>
-        <div class="message-actions">
-            <a href="#" class="delete-all-read">Удалить прочитанные</a>
-            <a href="#" class="delete-all">Удалить все</a>
-        </div>
+        <?php if ($allow_user_delete): ?>
+            <div class="message-actions">
+                <a href="#" class="delete-all-read">Удалить прочитанные</a>
+                <a href="#" class="delete-all">Удалить все</a>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 </div>

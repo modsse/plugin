@@ -5,6 +5,7 @@
     <li class="tab-link active" data-tab="main" data-tooltip="Основные настройки">Основные</li>
     <li class="tab-link" data-tab="discord" data-tooltip="Настройки Discord">Настройки Discord</li>
     <li class="tab-link" data-tab="steam" data-tooltip="Настройки Steam">Steam</li>
+    <li class="tab-link" data-tab="moderators" data-tooltip="Настройки модераторов">Модераторы</li>
 </ul>
 
 <!-- Форма с вкладками -->
@@ -103,6 +104,38 @@
             <tr>
                 <th><label for="steam_api_key">Steam API Key</label></th>
                 <td><input type="text" name="steam_api_key" id="steam_api_key" value="<?php echo esc_attr($api_key); ?>" class="regular-text"></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Вкладка "Модераторы" -->
+    <div id="moderators" class="tab-content">
+        <table class="form-table">
+            <tr>
+                <th><label>Роли модераторов</label></th>
+                <td>
+                    <?php
+                    $moders_config = get_option('steam_auth_mods_config', []);
+                    $selected_roles = $moders_config['selected_roles'] ?? [];
+                    $roles = wp_roles()->get_names();
+                    foreach ($roles as $role_key => $role_name):
+                        if ($role_key === 'administrator') continue; // Пропускаем администратора
+                    ?>
+                        <label>
+                            <input type="checkbox" name="moderator_roles[]" value="<?php echo esc_attr($role_key); ?>" <?php checked(in_array($role_key, $selected_roles)); ?>>
+                            <?php echo esc_html($role_name); ?>
+                        </label><br>
+                    <?php endforeach; ?>
+                    <p class="description">Выберите роли, которые будут считаться модераторами.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label>Права модераторов</label></th>
+                <td>
+                    <label><input type="checkbox" name="mod_can_manage_tickets" <?php checked($moders_config['can_manage_tickets'] ?? true); ?>> Управление тикетами</label><br>
+                    <label><input type="checkbox" name="mod_can_view_users" <?php checked($moders_config['can_view_users'] ?? false); ?>> Просмотр пользователей</label><br>
+                    <p class="description">Определите, какие действия доступны модераторам.</p>
+                </td>
             </tr>
         </table>
     </div>

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notification.classList.add('visible');
         setTimeout(() => {
             notification.classList.remove('visible');
-        }, 3000);
+        }, 5000);
     }
 
     // Начальное уведомление
@@ -74,6 +74,33 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Ошибка загрузки вкладки:', error);
             showNotification('<p class="error">Ошибка загрузки вкладки</p>', true);
         });
+    }
+
+    // Функция обновления счётчика тикетов
+    function updateTicketsCount() {
+        fetch(steamProfileData.ajaxurl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=get_unread_tickets_count&nonce=${steamProfileData.nonce}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ticketsLink = document.querySelector('.tab-link[data-tab="tickets"]');
+                let countSpan = ticketsLink.querySelector('.unread-count');
+                if (data.data > 0) {
+                    if (!countSpan) {
+                        countSpan = document.createElement('span');
+                        countSpan.className = 'unread-count';
+                        ticketsLink.appendChild(countSpan);
+                    }
+                    countSpan.textContent = data.data;
+                } else if (countSpan) {
+                    countSpan.remove();
+                }
+            }
+        })
+        .catch(error => console.error('Ошибка обновления счётчика тикетов:', error));
     }
 
     // Инициализация событий для вкладок
@@ -212,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 showNotification('<p class="success">Сообщение удалено</p>');
                                 loadTab('messages', false, page, category);
                             } else {
-                                showNotification('<p class="error">Ошибка удаления сообщения</p>', true);
+                                showNotification(`<p class="error">Ошибка: ${data.data.message || 'Неизвестная ошибка'}</p>`, true);
                             }
                         })
                         .catch(error => {
@@ -299,12 +326,139 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
+
+        if (tab === 'tickets') {
+            const createTicketForm = document.getElementById('create-ticket-form');
+            const ticketSpinner = document.getElementById('ticket-spinner');
+            const modal = document.getElementById('ticket-modal');
+            const modalClose = document.querySelector('.steam-modal-close');
+            const modalContent = document.getElementById('ticket-modal-content');
+            const accordionToggle = document.querySelector('.accordion-toggle');
+            const accordionContent = document.querySelector('.accordion-content');
+            const accordion = document.querySelector('.accordion');
+        
+            if (accordionToggle && accordionContent) {
+                accordionToggle.addEventListener('click', function() {
+                    const isOpen = accordion.classList.contains('open');
+                    accordion.classList.toggle('open');
+                    accordionContent.style.display = isOpen ? 'none' : 'block';
+                });
+            }
+        
+            if (createTicketForm) {
+                createTicketForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    formData.append('action', 'create_ticket');
+                    formData.append('nonce', steamProfileData.nonce);
+                    ticketSpinner.style.display = 'inline-block';
+        
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        ticketSpinner.style.display = 'none';
+                        if (data.success) {
+                            showNotification('<p class="success">Тикет создан!</p>');
+                            loadTab('tickets');
+                            updateTicketsCount();
+                            accordion.classList.remove('open');
+                            accordionContent.style.display = 'none'; // Сворачиваем после создания
+                            createTicketForm.reset(); // Очистка формы
+                        } else {
+                            showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                        }
+                    })
+                    .catch(error => {
+                        ticketSpinner.style.display = 'none';
+                        console.error('Ошибка создания тикета:', error);
+                        showNotification('<p class="error">Ошибка соединения</p>', true);
+                    });
+                });
+            }
+        
+            document.querySelectorAll('.view-ticket').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const ticketId = this.getAttribute('data-ticket-id');
+                    fetch(steamProfileData.ajaxurl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=view_ticket&ticket_id=${ticketId}&nonce=${steamProfileData.nonce}`
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        modalContent.innerHTML = html;
+                        modal.style.display = 'block';
+                        initTicketModalEvents(ticketId);
+                    })
+                    .catch(error => {
+                        console.error('Ошибка загрузки тикета:', error);
+                        showNotification('<p class="error">Ошибка загрузки тикета</p>', true);
+                    });
+                });
+            });
+        
+            if (modalClose) {
+                modalClose.addEventListener('click', function() {
+                    modal.style.display = 'none';
+                    updateTicketsCount();
+                });
+            }
+        
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                    updateTicketsCount();
+                }
+            });
+        
+            function initTicketModalEvents(ticketId) {
+                const replyForm = document.getElementById('ticket-reply-form');
+                if (replyForm) {
+                    replyForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        formData.append('action', 'reply_ticket');
+                        formData.append('ticket_id', ticketId);
+                        formData.append('nonce', steamProfileData.nonce);
+        
+                        fetch(steamProfileData.ajaxurl, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showNotification('<p class="success">Ответ отправлен!</p>');
+                                loadTab('tickets'); // Перезагружаем вкладку тикетов
+                                modal.style.display = 'none';
+                                updateTicketsCount();
+                                replyForm.reset(); // Очистка формы
+                            } else {
+                                showNotification(`<p class="error">Ошибка: ${data.data || 'Неизвестная ошибка'}</p>`, true);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ошибка отправки ответа:', error);
+                            showNotification('<p class="error">Ошибка соединения</p>', true);
+                        });
+                    });
+                }
+            }
+        }
     }
 
-    // Инициализация начальной вкладки
+    // Периодическое обновление счётчика (каждые 60 секунд)
+    setInterval(updateTicketsCount, 60000);
+
+    // Инициализация начального состояния
     const initialTab = steamProfileData.tab || 'profile';
     const initialEdit = window.location.search.includes('edit=true');
     const initialPage = new URLSearchParams(window.location.search).get('page') || 1;
     const initialCategory = new URLSearchParams(window.location.search).get('category') || '';
     loadTab(initialTab, initialEdit, initialPage, initialCategory);
+    updateTicketsCount(); // Обновляем счётчик при загрузке страницы
 });

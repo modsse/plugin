@@ -2,7 +2,7 @@
 // user_profile.php
 defined('ABSPATH') or die('No direct access allowed');
 ?>
-
+<div id="steam-profile-notification" class="notification"></div>
 <div class="steam-dashboard" style="max-width: none; width: 100%; margin: 0; padding: 0;">
     <div class="sidebar">
         <div class="sidebar-header">
@@ -21,6 +21,14 @@ defined('ABSPATH') or die('No direct access allowed');
                 <i class="fas fa-envelope"></i> <span>Сообщения</span>
                 <?php if ($unread_count > 0): ?>
                     <span class="unread-count"><?php echo $unread_count; ?></span>
+                <?php endif; ?>
+            </a>
+            <a href="#tickets" data-tab="tickets" class="tab-link <?php echo $tab === 'tickets' ? 'active' : ''; ?>">
+                <i class="fas fa-ticket-alt"></i> <span>Тикеты</span>
+                <?php
+                $unread_tickets = steam_auth_get_unread_tickets_count($user_id);
+                if ($unread_tickets > 0): ?>
+                    <span class="unread-count"><?php echo $unread_tickets; ?></span>
                 <?php endif; ?>
             </a>
             <a href="#mods" data-tab="mods" class="tab-link <?php echo $tab === 'mods' ? 'active' : ''; ?>">
@@ -43,11 +51,11 @@ defined('ABSPATH') or die('No direct access allowed');
             include plugin_dir_path(__FILE__) . 'tabs/profile-tab.php';
         } elseif ($tab === 'messages') {
             include plugin_dir_path(__FILE__) . 'tabs/messages-tab.php';
+        } elseif ($tab === 'tickets') {
+            include plugin_dir_path(__FILE__) . 'tabs/tickets-tab.php';
         } elseif ($tab === 'mods') {
             include plugin_dir_path(__FILE__) . 'tabs/mods-tab.php';
         }
         ?>
     </div>
-
-    <div id="steam-profile-notification" class="notification"></div>
 </div>
